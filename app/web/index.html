@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KUSTOS · Plataforma de Intervención Archivística</title>
+<style>
+:root{
+  --tinta:#12293F; --tinta2:#1B4A6B; --teal:#0C7A72; --ocre:#9A6A12;
+  --carmin:#96173C; --verde:#1B6B45;
+  --papel:#FAFBFC; --papel2:#F0F3F6; --papel3:#E3E9EF; --borde:#D3DBE3;
+  --texto:#16222E; --texto2:#4C5D6E; --texto3:#7A8898;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--texto);
+  font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,sans-serif;font-size:14px;line-height:1.55}
+.env{max-width:1180px;margin:0 auto;padding:0 24px}
+button{font-family:inherit;font-size:14px;cursor:pointer;border-radius:3px;border:1px solid transparent}
+.btn{background:var(--tinta);color:#fff;padding:9px 18px;font-weight:600}
+.btn:hover{background:var(--tinta2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn2{background:#fff;color:var(--tinta);border-color:var(--borde);padding:8px 16px}
+.btn2:hover{background:var(--papel2)}
+input,select{font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--borde);
+  border-radius:3px;background:#fff;color:var(--texto);width:100%}
+input:focus,select:focus{outline:2px solid var(--teal);outline-offset:-1px;border-color:transparent}
+.oculto{display:none!important}
+
+#pIngreso{min-height:100vh;display:grid;place-items:center;
+  background:linear-gradient(150deg,var(--tinta) 0%,#0B1F31 100%);padding:24px}
+.tarjeta{background:#fff;border-radius:5px;padding:38px 34px;width:100%;max-width:400px;
+  box-shadow:0 20px 60px -20px rgba(0,0,0,.5)}
+.marca{font-size:30px;font-weight:700;letter-spacing:.16em;color:var(--tinta);margin:0}
+.marca span{color:var(--teal)}
+.descr{margin:4px 0 26px;color:var(--texto3);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.etq{display:block;font-size:12px;font-weight:600;color:var(--texto2);margin:0 0 6px}
+.err{color:var(--carmin);font-size:13px;margin:12px 0 0;min-height:19px}
+.pie{margin:22px 0 0;font-size:11px;color:var(--texto3);line-height:1.5}
+
+header{background:var(--tinta);color:#fff;padding:0}
+.hcab{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 0}
+.hmarca{font-size:19px;font-weight:700;letter-spacing:.14em}
+.hmarca span{color:#4FC9BE}
+.hquien{text-align:right;font-size:12px;line-height:1.4}
+.hquien b{display:block;font-size:13px}
+.hrol{color:#8FB4CE;text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+nav{background:var(--tinta2);display:flex;gap:2px;padding:0;overflow-x:auto}
+nav button{background:transparent;color:#CFE0EC;padding:11px 18px;border:0;border-radius:0;
+  font-size:13px;white-space:nowrap;border-bottom:3px solid transparent}
+nav button:hover{background:rgba(255,255,255,.08);color:#fff}
+nav button.act{color:#fff;border-bottom-color:#4FC9BE;background:rgba(255,255,255,.1);font-weight:600}
+
+main{padding:26px 0 60px}
+h2{font-size:19px;margin:0 0 4px;color:var(--tinta);font-weight:600}
+.sub{color:var(--texto2);margin:0 0 20px;font-size:13px;max-width:74ch}
+.nota{color:var(--texto2);font-size:11.5px;line-height:1.45;margin-top:4px;max-width:62ch}
+/* ---- Proceso: de seis bloques apilados a una sola lista que se filtra tocando ---- */
+.encabezadoProceso{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.fichas{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px;margin-bottom:14px}
+.ficha{border:1px solid var(--borde);background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;transition:border-color .12s,box-shadow .12s,transform .12s}
+.ficha:hover{border-color:#9fb3c8;transform:translateY(-1px)}
+.ficha .n{font-size:22px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.ficha .r{font-size:11.5px;color:var(--texto2);margin-top:2px;line-height:1.3}
+.ficha.viva{border-color:var(--tinta2);box-shadow:0 0 0 2px rgba(27,74,107,.14)}
+.ficha.alerta .n{color:var(--carmin)}
+.ficha.bien .n{color:var(--verde)}
+.barraProceso{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.barraProceso input{flex:0 0 320px;max-width:100%}
+.tablaProceso tbody tr.carpeta{cursor:pointer}
+.tablaProceso tbody tr.carpeta:hover{background:#F6F9FC}
+.tablaProceso tr.partes td{background:#F4F8FB;padding:0 0 0 26px;border-left:3px solid var(--tinta2)}
+.tituloPartes{font-size:11.5px;color:var(--texto2);padding:8px 0 2px;letter-spacing:.03em;text-transform:uppercase}
+.listaPartes{margin:0;padding:6px 0 8px;list-style:none;font-size:12px}
+.listaPartes li{display:flex;align-items:center;gap:10px;padding:4px 0;border-top:1px dashed var(--borde)}
+.listaPartes li:first-child{border-top:0}
+.listaPartes .arch{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flecha{display:inline-block;width:12px;color:var(--texto2);transition:transform .12s}
+.flecha.abierta{transform:rotate(90deg)}
+
+.caja{background:#fff;border:1px solid var(--borde);border-radius:4px;padding:20px;margin:0 0 18px}
+.modal{position:fixed;inset:0;background:rgba(18,41,63,.45);z-index:50;overflow:auto;padding:24px 12px}
+.modalCuerpo{background:#fff;border:1px solid var(--borde);border-radius:6px;padding:20px;max-width:1240px;margin:0 auto;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.ambulancia{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:4px 10px;border:1px solid var(--carmin);border-radius:20px;background:#fff;color:var(--carmin);font-size:12px;font-weight:600;cursor:pointer;vertical-align:middle}
+.ambulancia:hover{background:#FCEBEF}
+.ayuda h4{margin:14px 0 6px;color:var(--tinta);font-size:14px}
+.ayuda p{margin:0 0 8px}
+.ayuda .caso{padding:8px 10px;border-left:3px solid var(--ocre);background:var(--papel2);margin:6px 0;border-radius:3px}
+.ayuda .caso b{color:var(--carmin)}
+.ayuda .boton{padding:8px 10px;border-left:3px solid var(--teal);background:#EEF6F5;margin:6px 0;border-radius:3px}
+.ayuda .boton b{color:var(--tinta)}
+.ayuda .quien{color:var(--texto3);font-size:12px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.metro{background:#fff;border:1px solid var(--borde);border-left:3px solid var(--teal);
+  border-radius:0 3px 3px 0;padding:14px 16px}
+.metro .n{font-size:27px;font-weight:700;color:var(--tinta);line-height:1.1;
+  font-variant-numeric:tabular-nums}
+.metro .r{font-size:12px;color:var(--texto2);margin-top:3px}
+.metro .e{font-size:11px;color:var(--texto3);margin-top:6px;line-height:1.4;word-break:break-all}
+.metro.rev{border-left-color:var(--ocre)} .metro.dev{border-left-color:var(--carmin)}
+.metro.apr{border-left-color:var(--verde)}
+.barraAvance{display:flex;height:26px;border-radius:6px;overflow:hidden;background:var(--papel3);
+  margin-top:12px;border:1px solid var(--borde)}
+.barraAvance i{display:block;height:100%;transition:width .6s ease}
+.barraAvance i.b1{background:#2A6B66} .barraAvance i.b2{background:#4E9A93}
+.barraAvance i.b3{background:#8FBF98} .barraAvance i.b4{background:#C9A227}
+.leyendaAvance{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:12.5px;color:var(--texto2)}
+.leyendaAvance span{display:inline-flex;align-items:center;gap:6px}
+.leyendaAvance i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.quien{display:flex;flex-wrap:wrap;gap:10px}
+.quien .p{border:1px solid var(--borde);border-radius:8px;padding:10px 14px;background:var(--papel)}
+.quien .p b{display:block;font-size:14px}
+.pill{display:inline-block;padding:2px 10px;border-radius:11px;font-size:12px;font-weight:600;background:#EEF1F5;color:var(--texto2);white-space:nowrap}
+.pill.dev{background:#FBEAEE;color:var(--carmin)} .pill.rev{background:#FDF3DE;color:#8A6100}
+.pill.apr{background:#E7F3EC;color:var(--verde)}
+
+.zona{border:2px dashed var(--borde);border-radius:4px;padding:38px 20px;text-align:center;
+  background:var(--papel2);transition:border-color .15s,background .15s}
+.zona.on{border-color:var(--teal);background:#E9F5F4}
+.zona p{margin:0 0 4px;color:var(--texto2)}
+.zona small{color:var(--texto3)}
+
+.barra{height:7px;background:var(--papel3);border-radius:4px;overflow:hidden;margin:10px 0 4px}
+.barra i{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 10px;background:var(--papel3);color:var(--tinta);
+  font-size:11px;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--borde)}
+td{padding:9px 10px;border-bottom:1px solid var(--papel3);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.mono{font-family:Consolas,Menlo,monospace;font-size:12px;color:var(--tinta2);white-space:nowrap}
+.tenv{overflow-x:auto}
+
+.aviso{padding:11px 14px;border-radius:3px;font-size:13px;margin:0 0 14px}
+.aviso.ok{background:#E7F3EC;color:var(--verde);border:1px solid #BFE0CC}
+.aviso.mal{background:#FBEAEE;color:var(--carmin);border:1px solid #F0C6D0}
+.aviso.info{background:#EAF2F7;color:var(--tinta2);border:1px solid #C9DCE8}
+.fila{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.fila>div{flex:1;min-width:200px}
+tr.malaFila td{background:#FDEEF2}
+tr.malaFila input{border-color:var(--carmin);background:#FFF7F9}
+.errCelda{display:block;color:var(--carmin);font-size:11px;line-height:1.35;margin-top:4px}
+.vacio{text-align:center;color:var(--texto3);padding:32px;font-size:13px}
+.pendiente{border:1px dashed var(--ocre);background:#FDF7EA;color:var(--ocre);
+  padding:10px 12px;border-radius:3px;font-size:12px;margin:0 0 14px}
+</style>
+</head>
+<body>
+
+<!-- ================= INGRESO ================= -->
+<section id="pIngreso">
+  <div class="tarjeta">
+    <p class="marca">KUS<span>TOS</span></p>
+    <p class="descr">Plataforma de Intervención Archivística</p>
+
+    <div id="formIngreso">
+      <label class="etq" for="correo">Correo institucional</label>
+      <input id="correo" type="email" autocomplete="username" placeholder="nombre@correo.com">
+      <label class="etq" for="clave" style="margin-top:14px">Contraseña</label>
+      <input id="clave" type="password" autocomplete="current-password" placeholder="••••••••">
+      <p class="err" id="errIngreso"></p>
+      <button class="btn" id="btnIngresar" style="width:100%">Ingresar</button>
+    </div>
+
+    <div id="formCambio" class="oculto">
+      <div class="aviso info" style="margin-bottom:14px">Su contraseña es provisional. Cámbiela
+        para continuar; la anterior dejará de servir.</div>
+      <label class="etq" for="claveNueva">Contraseña nueva</label>
+      <input id="claveNueva" type="password" autocomplete="new-password" placeholder="mínimo 8 caracteres">
+      <label class="etq" for="claveNueva2" style="margin-top:14px">Repítala</label>
+      <input id="claveNueva2" type="password" autocomplete="new-password">
+      <p class="err" id="errCambio"></p>
+      <button class="btn" id="btnCambiar" style="width:100%">Cambiar y entrar</button>
+    </div>
+
+    <p class="pie">Su contraseña no se guarda en ninguna parte: el sistema conserva solo su
+    huella cifrada. La sesión vence sola por seguridad.</p>
+  </div>
+</section>
+
+<!-- ================= APLICACIÓN ================= -->
+<div id="pApp" class="oculto">
+<header>
+  <div class="env hcab">
+    <div class="hmarca">KUS<span>TOS</span></div>
+    <div class="hquien">
+      <b id="quienNombre">—</b>
+      <span id="quienCargo">Contrato 733 de 2026 · Servicio Geológico Colombiano</span>
+      <span class="hrol" id="quienRol">—</span>
+    </div>
+  </div>
+  <nav class="env" id="menu" style="padding:0"></nav>
+</header>
+
+<main class="env">
+  <!-- INICIO -->
+  <section id="vInicio" class="vista">
+    <h2>Panel del día <button class="ambulancia" onclick="ayuda('vInicio')">🚑 Qué hacer</button></h2>
+    <p class="sub">Cuántos expedientes hay en cada estado y qué corresponde hacer hoy.</p>
+
+    <div class="caja" style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+        <b id="avanceTitulo">Avance del contrato</b>
+        <span class="e" id="avanceSello">actualizando…</span>
+      </div>
+      <div class="barraAvance" id="barraAvance"></div>
+      <div class="leyendaAvance" id="leyendaAvance"></div>
+      <div class="rejilla" id="enVuelo" style="margin-top:16px"></div>
+      <div id="trabajando" style="margin-top:16px"></div>
+    </div>
+
+    <div class="rejilla" id="tablero"></div>
+    <div class="caja" style="margin-top:18px">
+      <div class="metro" style="border:0;padding:0">
+        <div class="n" id="estadoServidor">…</div>
+        <div class="r">Base de datos y trabajador de tareas</div>
+        <div class="e" id="estadoDetalle">consultando</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARGUE -->
+  <section id="vCargue" class="vista oculto">
+    <h2>Cargue de expedientes digitalizados
+      <button class="ambulancia" onclick="ayuda('vCargue')">🚑 Qué hacer</button>
+      <button class="ambulancia" onclick="ayuda('vRecepcion')">📐 Recepción técnica</button></h2>
+    <p class="sub">El nombre del archivo debe traer el código de carpeta, por ejemplo AC-CP-00374.pdf,
+      CARPETA_00374.pdf o simplemente 00374.pdf. <b>Un tomo se puede subir por partes</b> y se
+      admite como usted las nombre: AC-CP-00374_1.pdf, CARPETA_00374 parte 2.pdf,
+      AC-CP-00374 (3).pdf. Todas las partes cuentan como un solo expediente y la hoja de
+      control sale una sola, con la foliación corrida. Partir no es obligatorio: un archivo de
+      mil páginas también entra, el sistema lo lee por bloques.</p>
+    <div class="caja">
+      <div class="zona" id="zona">
+        <p><b>Arrastre aquí los archivos, o selecciónelos</b></p>
+        <small>se comprueba el código contra el inventario del contrato y se registra el expediente</small>
+        <br><br>
+        <input type="file" id="selArchivos" multiple accept=".pdf,.PDF" style="display:none">
+        <button class="btn2" onclick="document.getElementById('selArchivos').click()">Seleccionar del equipo</button>
+      </div>
+
+      <div class="zona" style="margin-top:14px">
+        <p><b>¿Tiene hojas de control ya diligenciadas en Excel?</b></p>
+        <small>Súbalas aquí y entran al flujo verificadas con las mismas reglas. El trabajo hecho
+          fuera de la plataforma no se vuelve a escribir: se importa y se le hace calidad.
+          <br>Tienen que estar en <b>.xlsx</b>. Si las suyas son <b>.xls</b> —el Excel viejo—
+          ábralas y use <i>Guardar como</i> → Libro de Excel (.xlsx).</small>
+        <br><br>
+        <!-- Se admiten también .xls y .ods aunque el programa no los sepa leer. Es a propósito:
+             si el selector los esconde, la persona ve una carpeta vacía y cree que perdió los
+             archivos. Es mejor dejarla escogerlos y explicarle en una frase que hay que
+             guardarlos como .xlsx, que dejarla mirando una ventana en blanco. -->
+        <input type="file" id="selHojas" multiple accept=".xlsx,.xlsm,.xltx,.xls,.ods"
+               style="display:none">
+        <button class="btn2" onclick="document.getElementById('selHojas').click()">Subir hojas de control en Excel</button>
+        <div id="resultadoHojas" style="margin-top:14px"></div>
+      </div>
+      <div class="barra oculto" id="barraCargue"><i></i></div>
+      <div id="lecturaNombres" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- HOJAS DE CONTROL -->
+  <section id="vHojas" class="vista oculto">
+    <h2>Hojas de control <button class="ambulancia" onclick="ayuda('vHojas')">🚑 Qué hacer</button></h2>
+    <p class="sub">Diligencie la hoja F-GDM-007 y verifíquela. Nada se describe solo: cuando la hoja
+      quede sin errores, usted pulsa Generar ISAD(G).</p>
+
+    <div class="caja">
+      <div class="fila">
+        <div><label class="etq">Código de carpeta</label>
+          <div class="fila" style="gap:6px">
+            <div><input id="hcCarpeta" placeholder="AC-CP-00363"
+                 onkeydown="if(event.key==='Enter')prellenarDesdeInventario()"></div>
+            <div style="flex:0 0 auto"><button class="btn2" onclick="prellenarDesdeInventario()"
+                 title="Trae del inventario la serie, la subserie, los folios y el asunto">Traer datos</button></div>
+            <div style="flex:0 0 auto"><button class="btn" id="btnLevantar"
+                 onclick="levantarHoja(document.getElementById('hcCarpeta').value.trim())"
+                 title="El modelo lee el expediente y llena la hoja">Levantar con el modelo</button>
+          <button type="button" class="btn2" style="margin-left:6px"
+                 onclick="descargarHojaOficial(document.getElementById('hcCarpeta').value.trim())"
+                 title="Descarga esta hoja de control llena sobre la plantilla F-GDM-007 versión 4 del Servicio Geológico">Descargar F-GDM-007</button></div>
+          </div>
+          <div class="e" id="hcDatosCaja" style="margin-top:5px"></div></div>
+        <div style="flex:2 1 420px">
+          <label class="etq">Serie y subserie · la clasifica la plataforma y usted la valida</label>
+          <select id="hcTvd" onchange="mostrarValoracion();volcarClasificacion();explicarPropuesta('','')">
+            <option value="">Escriba el código de carpeta y pulse Traer datos</option>
+          </select>
+          <div class="e" id="hcPropuestaTvd" style="margin-top:5px"></div>
+          <div class="e" id="hcValoracion" style="margin-top:5px"></div>
+        </div>
+      </div>
+      <div class="fila" style="margin-top:12px">
+        <div style="flex:0 0 130px"><label class="etq">Código dependencia</label>
+          <input id="hcCodDep" readonly style="background:#EEF1F5;color:var(--texto2)"></div>
+        <div><label class="etq">Dependencia</label>
+          <input id="hcDep" readonly style="background:#EEF1F5;color:var(--texto2)"></div>
+        <div style="flex:0 0 110px"><label class="etq">Código serie</label>
+          <input id="hcCodSerie" readonly style="background:#EEF1F5;color:var(--texto2)"></div>
+        <div><label class="etq">Serie</label>
+          <input id="hcSerie" readonly style="background:#EEF1F5;color:var(--texto2)"></div>
+      </div>
+      <div class="fila" style="margin-top:12px">
+        <div style="flex:0 0 130px"><label class="etq">Código subserie</label>
+          <input id="hcCodSub" readonly style="background:#EEF1F5;color:var(--texto2)"></div>
+        <div><label class="etq">Subserie</label>
+          <input id="hcSub" readonly style="background:#EEF1F5;color:var(--texto2)"></div>
+        <div style="flex:0 0 260px">
+          <label class="etq">Periodo institucional · lo asigna usted de la lista</label>
+          <select id="hcPeriodo" onchange="cambiarPeriodo(this.value)">
+            <option value="">— sin asignar —</option>
+          </select>
+          <div class="e" id="hcPeriodoPorque" style="margin-top:5px"></div></div>
+      </div>
+
+      <div class="fila" style="margin-top:12px">
+        <div><label class="etq">Campo 7 · Nombre del expediente</label>
+          <input id="hcNombre" placeholder="Corto y general: Estudios de laboratorio"
+                 title="El rótulo del expediente, de dos a seis palabras. Los números de muestra, las fincas y los municipios van en el tipo documental de cada trámite, no aquí."></div>
+        <div style="flex:0 0 240px"><label class="etq">Campo 15 · Responsable</label>
+          <input id="hcResp" readonly title="Lo pone la plataforma con el nombre de quien inició sesión. No se puede cambiar."
+                 style="background:#EEF1F5;color:var(--texto2);cursor:not-allowed"></div>
+        <div style="flex:0 0 210px"><label class="etq">Campo 16 · Fecha de diligenciamiento</label>
+          <input id="hcFecha" placeholder="2026-09-09"></div>
+      </div>
+
+      <div id="hcErrores" style="margin-top:14px"></div>
+      <div id="hcContraste" style="margin-top:10px"></div>
+
+      <div class="tenv" style="margin-top:16px">
+        <table id="tablaHc">
+          <thead><tr>
+            <th style="width:44px">N.º</th><th style="width:130px">Fecha</th>
+            <th>Tipo documental</th><th style="width:90px">Folio desde</th>
+            <th style="width:90px">Folio hasta</th>
+            <th style="width:110px">N.º radicado</th>
+            <th class="colExtra oculto" style="width:130px">Sistema de información</th>
+            <th class="colExtra oculto" style="width:130px">Expediente en el SGDEA</th>
+            <th class="colExtra oculto" style="width:130px">Enlace de acceso</th>
+            <th>Observaciones</th><th style="width:90px"></th>
+          </tr></thead>
+          <tbody id="cuerpoHc"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn2" onclick="agregarFila()">+ Agregar trámite</button>
+        <button class="btn2" onclick="quitarUltima()">− Quitar el último</button>
+        <button class="btn2" onclick="encadenarFolios()">Encadenar folios</button>
+        <button class="btn2" id="btnCampos" onclick="alternarCampos()">Mostrar los demás campos del formato</button>
+        <button class="btn2" onclick="guardarHoja('avance')">Guardar avance</button>
+        <button class="btn" onclick="guardarHoja('verificar')">Guardar y verificar</button>
+      </div>
+      <div id="hcResultado" style="margin-top:14px"></div>
+    </div>
+
+    <h2 style="margin-top:26px">Hojas en proceso</h2>
+    <p class="sub">Las que están en elaboración, devueltas o verificadas y esperando descripción.</p>
+    <div class="caja"><div class="tenv"><table>
+      <thead><tr><th>Carpeta</th><th>Estado</th><th>Folios</th><th>Fechas extremas</th><th>Responsable</th><th></th></tr></thead>
+      <tbody id="cuerpoProceso2"><tr><td colspan="6" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+  </section>
+
+  <!-- PROCESO -->
+  <section id="vCola" class="vista oculto">
+    <div class="encabezadoProceso">
+      <div>
+        <h2 style="margin:0">Proceso <button class="ambulancia" onclick="ayuda('vCola')">🚑 Qué hacer</button></h2>
+        <p class="sub" id="fraseProceso" style="margin:6px 0 0">Contando lo que hay…</p>
+      </div>
+      <button class="btn2" onclick="cargarProceso()">Actualizar</button>
+    </div>
+
+    <!-- Los recuadros de antes eran seis bloques que solo se miraban. Ahora cada uno es el
+         filtro de la tabla: se toca y la lista de abajo se reduce a ese caso. -->
+    <div class="fichas" id="fichasProceso"></div>
+
+    <div id="avisoProceso"></div>
+
+    <div class="barraProceso">
+      <input id="buscarProceso" placeholder="Buscar carpeta…  AC-CP-00808" oninput="pintarProceso()">
+      <span class="e" id="cuentaProceso"></span>
+    </div>
+
+    <div class="caja" style="padding:0;overflow:hidden">
+      <div class="tenv"><table class="tablaProceso">
+        <thead><tr>
+          <th style="width:210px">Carpeta</th>
+          <th style="width:200px">Lo que se subió</th>
+          <th style="width:160px">Última carga</th>
+          <th style="width:210px">Estado</th>
+          <th>Qué sigue</th>
+        </tr></thead>
+        <tbody id="cuerpoProceso"><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- REVISIÓN -->
+  <section id="vRevision" class="vista oculto">
+    <h2>Revisión y aprobación <button class="ambulancia" onclick="ayuda('vRevision')">🚑 Qué hacer</button></h2>
+    <p class="sub">Las descripciones pendientes de revisión. Nadie aprueba su propio trabajo.</p>
+    <div class="caja"><div class="tenv"><table>
+      <thead><tr><th>Carpeta</th><th>Código de referencia</th><th>Título</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="cuerpoRevision"><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+    <div id="fichaRevision"></div>
+  </section>
+
+  <!-- LOCALIZACIÓN -->
+  <section id="vBuscar" class="vista oculto">
+    <h2>Localización de expedientes <button class="ambulancia" onclick="ayuda('vBuscar')">🚑 Qué hacer</button></h2>
+    <p class="sub">Dónde está una carpeta, con las tres numeraciones que conviven: la caja de origen
+      del archivo central, la caja de trabajo del contrato y la caja definitiva.</p>
+    <div class="caja">
+      <div class="fila">
+        <div><label class="etq">Código de carpeta</label>
+          <input id="buscarCodigo" placeholder="AC-CP-00363" onkeydown="if(event.key==='Enter')buscarCarpeta()"></div>
+        <div style="flex:0 0 auto"><button class="btn" onclick="buscarCarpeta()">Buscar</button></div>
+      </div>
+      <div id="resultadoBusqueda" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+  <!-- REUBICACIÓN -->
+  <section id="vReubicacion" class="vista oculto">
+    <h2>Reubicación en cajas definitivas
+      <button class="ambulancia" onclick="ayuda('vReubicacion')">🚑 Qué hacer</button></h2>
+    <p class="sub">Las descripciones aprobadas esperan aquí su caja definitiva. Una caja pertenece
+      a un solo periodo: la plataforma no permite mezclarlos. El número de carpeta lo pone el
+      sistema.</p>
+
+    <div class="caja">
+      <div class="fila">
+        <div style="flex:0 0 220px"><label class="etq">Caja definitiva</label>
+          <input id="reCaja" placeholder="AH-CJ-00001"></div>
+        <div style="flex:0 0 auto;padding-bottom:1px">
+          <button class="btn" onclick="asignarACaja()">Asignar a la caja las marcadas</button></div>
+        <div style="flex:0 0 auto;padding-bottom:1px">
+          <button class="btn2" onclick="cargarPendientesCaja()">Actualizar</button></div>
+      </div>
+      <div id="reAviso" style="margin-top:12px"></div>
+      <div class="tenv" style="margin-top:12px"><table>
+        <thead><tr><th style="width:38px"><input type="checkbox" id="reTodas" onclick="marcarTodas(this)" style="width:auto"></th>
+          <th>Carpeta</th><th>Periodo</th><th>Serie › subserie</th><th>Fechas</th><th>Folios</th><th>Título</th></tr></thead>
+        <tbody id="rePendientes"><tr><td colspan="7" class="vacio">Cargando…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <h2 style="margin-top:26px">Cajas</h2>
+    <div class="caja"><div class="tenv"><table>
+      <thead><tr><th>Caja</th><th>Periodo</th><th>Carpetas</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="reCajas"><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+    <div id="reRotulos"></div>
+  </section>
+
+  <!-- INSTRUMENTOS -->
+  <section id="vInstrumentos" class="vista oculto">
+    <h2>Instrumentos archivísticos
+      <button class="ambulancia" onclick="ayuda('vInstrumentos')">🚑 Qué hacer</button></h2>
+    <p class="sub">Todo sale sobre las plantillas oficiales del Servicio Geológico: inventario
+      F-GDM-003 versión 9, hoja de control F-GDM-007 versión 4, rótulo de carpeta F-GDM-006 y
+      rótulo de caja F-GDM-008 versión 5. La plataforma las llena; no dibuja formatos.</p>
+    <div class="rejilla" id="insResumen"></div>
+    <div class="caja" style="margin-top:16px">
+      <div class="fila">
+        <div style="flex:0 0 200px"><label class="etq">Caja definitiva (opcional)</label>
+          <select id="insCaja"><option value="">Todas</option></select></div>
+        <div style="flex:0 0 170px"><label class="etq">Periodo (opcional)</label>
+          <select id="insPeriodo"><option value="">Todos</option></select></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="descargar('paquete-oficial')"
+                title="Vuelve a expedir en los formatos del Servicio Geológico todo lo que ya está hecho: hojas de control, rótulos e inventario">
+          Todo en formato oficial</button>
+        <button class="btn2" onclick="descargar('fuid')">Inventario de salida F-GDM-003</button>
+        <button class="btn2" onclick="descargar('hojas-de-control')">Hojas de control F-GDM-007</button>
+        <button class="btn2" onclick="descargar('base-isadg-plantilla')"
+                title="La descripción multinivel escrita dentro de la plantilla del proyecto: fondo, sección, subserie y unidad documental">
+          Base ISAD(G) · plantilla del proyecto</button>
+        <button class="btn2" onclick="descargar('base-isadg')">Base ISAD(G) · hoja plana</button>
+      </div>
+      <div class="e" style="margin-top:10px">
+        <b>Base ISAD(G) · plantilla del proyecto</b> es la que se entrega: va escrita dentro
+        de la plantilla, con la descripción multinivel que pide la norma —fondo, sección,
+        subserie y unidad documental, cada renglón amarrado al de arriba— y solo con lo ya
+        validado. La <b>hoja plana</b> es un renglón por expediente con todos los campos en
+        crudo, para trabajar, no para entregar.
+      </div>
+      <div class="e" style="margin-top:10px">
+        <b>Todo en formato oficial</b> trae, en un comprimido: una hoja de control por
+        expediente, el rótulo de cada caja y los de sus carpetas —cuatro por hoja oficio— y el
+        inventario de salida. Lo que se diligenció con el formato anterior sale aquí en el del
+        Servicio Geológico, con la misma información: no hay que volver a digitar nada.
+      </div>
+      <div class="fila" style="margin-top:18px;border-top:1px solid var(--linea);padding-top:16px">
+        <div style="flex:0 0 260px"><label class="etq">Una hoja de control puntual</label>
+          <input id="insCarpeta" placeholder="AC-CP-00808, o solo 808"
+                 onkeydown="if(event.key==='Enter'){descargarHojaOficial(this.value.trim());}"></div>
+        <div style="flex:0 0 auto;align-self:flex-end">
+          <button class="btn2" onclick="descargarHojaOficial(document.getElementById('insCarpeta').value.trim())">
+            Descargar F-GDM-007 de esa carpeta</button></div>
+      </div>
+      <div id="insAviso" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- CENTRO DE CONTROL -->
+  <!-- CALIDAD -->
+  <section id="vCalidad" class="vista oculto">
+    <h2>Control de calidad <button class="ambulancia" onclick="ayuda('vCalidad')">🚑 Qué hacer</button></h2>
+    <p class="sub">La plataforma se revisa a sí misma. Pasa todas las pruebas sobre lo que llevamos cargado
+      y le dice qué carpeta está mal, qué prueba falló y dónde se corrige. No corrige nada sola.</p>
+    <div class="caja">
+      <div class="fila">
+        <div><label class="etq">Mostrar</label>
+          <select id="filtroGravedad" onchange="cargarCalidad()">
+            <option value="">Todo</option>
+            <option value="error">Solo errores</option>
+            <option value="revisar">Solo lo que hay que revisar</option>
+            <option value="aviso">Solo avisos</option>
+          </select></div>
+        <div><label class="etq">Estado del expediente</label>
+          <select id="filtroEstadoCalidad" onchange="cargarCalidad()">
+            <option value="">Todos los estados</option>
+          </select></div>
+        <div style="flex:0 0 auto"><label class="etq">&nbsp;</label>
+          <button class="btn" onclick="cargarCalidad()">Volver a revisar</button></div>
+        <div style="flex:0 0 auto"><label class="etq">&nbsp;</label>
+          <button class="btn2" onclick="descargarCalidad()">Descargar en Excel</button></div>
+      </div>
+      <div id="resumenCalidad" class="rejilla" style="margin-top:16px"></div>
+    </div>
+    <div class="caja" style="margin-top:18px"><div class="tenv"><table>
+      <thead><tr><th>Carpeta</th><th>Gravedad</th><th>Qué pasa</th><th>Dónde se corrige</th><th></th></tr></thead>
+      <tbody id="cuerpoCalidad"><tr><td colspan="5" class="vacio">Pulse «Volver a revisar».</td></tr></tbody>
+    </table></div></div>
+  </section>
+
+  <section id="vAvance" class="vista oculto">
+    <h2>Centro de control del contrato
+      <button class="ambulancia" onclick="ayuda('vAvance2')">🚑 Qué hacer</button></h2>
+    <p class="sub" id="selloAvance">Avance del contrato, producción del día y cuota de los modelos.</p>
+
+    <h2 style="margin-top:20px">Metros lineales intervenidos</h2>
+    <p class="sub">La medida con la que se mide y se factura el contrato. Se deriva de los folios
+      registrados, a razón de cien folios por centímetro.</p>
+    <div class="rejilla" id="metrosAvance"></div>
+
+    <h2 style="margin-top:26px">Embudo del proceso</h2>
+    <div class="rejilla" id="embudoAvance"></div>
+
+    <h2 style="margin-top:26px">Producción de hoy
+      <select id="diaProduccion" style="width:auto;font-size:14px" onchange="cargarAvance()"></select></h2>
+    <div class="rejilla" id="hoyAvance"></div>
+    <div class="caja" style="margin-top:14px"><div class="tenv"><table>
+      <thead><tr><th>Quién</th><th>Hojas de control</th><th>Descripciones</th><th>Validaciones</th><th>Total del día</th></tr></thead>
+      <tbody id="cuerpoHoyPersona"><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+
+    <h2 style="margin-top:26px">Ritmo y proyección</h2>
+    <div class="caja" id="ritmoAvance"></div>
+    <div class="caja" style="margin-top:14px"><div class="tenv"><table>
+      <thead><tr><th>Día</th><th>Hojas de control</th><th>Descritas</th><th>Validadas</th><th>Reubicadas</th><th>Total</th></tr></thead>
+      <tbody id="cuerpoPorDia"><tr><td colspan="6" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+
+    <h2 style="margin-top:26px">Acumulado por persona</h2>
+    <div class="caja"><div class="tenv"><table>
+      <thead><tr><th>Quién</th><th>Hojas de control</th><th>Descripciones</th><th>Validaciones</th><th>Total</th></tr></thead>
+      <tbody id="cuerpoAcumulado"><tr><td colspan="5" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+    <h2 style="margin-top:26px">Modelos de lenguaje
+      <button class="ambulancia" onclick="ayuda('vModelos')">🚑 Qué hacer</button>
+      <button class="btn2" style="float:right" onclick="cargarAvance(true)">Buscar modelos nuevos</button></h2>
+    <p class="sub">Trabajan Claude, Gemini y ChatGPT, con todos los modelos que admita cada cuenta.
+      Todos hacen el mismo trabajo y se reparten los expedientes: los de más folios van a los modelos de
+      más aliento y los de menos a los ligeros. Si a uno se le acaba la cuota o falla, la plataforma pasa
+      sola al siguiente. La lista se le pregunta a cada proveedor, así que un modelo nuevo entra solo.</p>
+    <div class="caja"><div class="tenv"><table>
+      <thead><tr><th>Proveedor</th><th>Modelo</th><th>Le tocan</th><th>Clave configurada</th><th>Usadas hoy</th><th>Restantes</th><th>Estado</th></tr></thead>
+      <tbody id="cuerpoModelos"><tr><td colspan="7" class="vacio">Cargando…</td></tr></tbody>
+    </table></div></div>
+  </section>
+</main>
+</div>
+
+<!-- Visor del expediente digitalizado. Va en un panel aparte y no en una pestaña nueva del
+     navegador, para poder corregir la hoja con el papel a la vista en la misma pantalla. -->
+<div id="visor" class="oculto" style="position:fixed;right:0;top:0;bottom:0;width:46vw;min-width:420px;
+     background:#fff;border-left:1px solid var(--borde);box-shadow:-8px 0 24px rgba(18,41,63,.18);
+     z-index:60;display:flex;flex-direction:column">
+  <div style="padding:10px 14px;border-bottom:1px solid var(--borde);display:flex;
+       align-items:center;gap:10px;flex-wrap:wrap;background:var(--papel2)">
+    <b id="visorTitulo" style="color:var(--tinta)">Documento</b>
+    <span id="visorPartes" style="display:flex;gap:6px"></span>
+    <span style="flex:1"></span>
+    <button class="btn2" id="visorCopia" onclick="alternarCopia()"
+            title="La copia de consulta está enderezada y con texto buscable. El original es contra el que se comprueba la hoja.">Ver la copia de consulta</button>
+    <button class="btn2" onclick="abrirEnPestana()">Abrir aparte</button>
+    <button class="btn" onclick="cerrarVisor()">Cerrar</button>
+  </div>
+  <iframe id="visorMarco" style="flex:1;border:0;width:100%"></iframe>
+</div>
+
+<div id="modal" class="modal oculto" onclick="if(event.target===this)cerrarModal()">
+  <div class="modalCuerpo"><div id="modalContenido" class="ayuda"></div>
+  <p style="margin-top:16px"><button class="btn2" onclick="cerrarModal()">Cerrar</button></p></div>
+</div>
+
+<script>
+"use strict";
+
+/* La interfaz se sirve desde el mismo servidor de la API, de modo que no hay que
+   configurar orígenes cruzados ni escribir direcciones absolutas. */
+const API = "";
+let SESION = null;
+let PASE = null;
+
+const VISTAS = [
+  { clave:"inicio",       id:"vInicio",       titulo:"Inicio",            al:cargarInicio },
+  { clave:"cargue",       id:"vCargue",       titulo:"Cargue" },
+  { clave:"hojas",        id:"vHojas",        titulo:"Hojas de control",  al:cargarHojasEnProceso },
+  { clave:"proceso",      id:"vCola",         titulo:"Proceso",           al:cargarProceso },
+  { clave:"revision",     id:"vRevision",     titulo:"Revisión",          al:cargarRevision },
+  { clave:"localizacion", id:"vBuscar",       titulo:"Localización" },
+  { clave:"reubicacion",  id:"vReubicacion",  titulo:"Reubicación",       al:cargarPendientesCaja },
+  { clave:"instrumentos", id:"vInstrumentos", titulo:"Instrumentos",     al:cargarInstrumentos },
+  { clave:"calidad",      id:"vCalidad",      titulo:"Calidad",           al:cargarCalidad },
+  { clave:"avance",       id:"vAvance",       titulo:"Centro de control", al:cargarAvance }
+];
+
+let TVD_DEL_PERIODO = [];
+
+const ESTADOS = ["En cola","En procesamiento","Hoja de control en elaboración",
+  "Hoja de control por revisar","Hoja de control revisada","Descripción por validar",
+  "Descripción validada","Devuelto","Archivado","En inventario de salida","Retirado"];
+
+const CLASE_ESTADO = {
+  "Devuelto":"dev", "Retirado":"dev",
+  "Hoja de control por revisar":"rev", "Descripción por validar":"rev",
+  "Descripción validada":"rev",
+  "Archivado":"apr", "En inventario de salida":"apr"
+};
+
+const AYUDA = {
+  vInicio:{ t:"Inicio", h:
+    "<h4>Para qué sirve</h4><p>Es el tablero del día. Muestra cuántos expedientes hay en cada "+
+    "estado y si el sistema está en pie.</p>"+
+    "<h4>El recorrido completo de una carpeta</h4>"+
+    "<p>1. Se carga el documento digitalizado y queda <b>En cola</b>. "+
+    "2. Se diligencia su hoja de control y queda <b>Hoja de control por revisar</b>. "+
+    "3. Alguien del equipo la revisa y queda <b>Hoja de control revisada</b>. "+
+    "4. Se genera el ISAD(G) y queda <b>Descripción por validar</b>. "+
+    "5. Camila valida la descripción y queda <b>Descripción validada</b>. "+
+    "6. Maritza o Marlín aprueban y queda <b>Archivado</b>. "+
+    "7. Se asigna a caja definitiva, se imprimen los rótulos y queda <b>En inventario de salida</b>.</p>"+
+    "<div class='caso'><b>El indicador dice degradado</b> La base de datos o el trabajador de "+
+    "tareas no responden. Levante los servicios y actualice.</div>" },
+
+  vCargue:{ t:"Cargue de expedientes digitalizados", h:
+    "<h4>Para qué sirve</h4><p>Aquí entran los expedientes escaneados. Al soltarlos, la "+
+    "plataforma lee el código del nombre, lo busca en el inventario del contrato y le muestra "+
+    "lo que ese inventario dice de la carpeta.</p>"+
+    "<h4>Qué hace cada botón</h4>"+
+    "<div class='boton'><b>Seleccionar del equipo</b> Abre el explorador para escoger los PDF. "+
+    "Es lo mismo que arrastrarlos. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>Levantar con el modelo</b> El modelo lee el expediente completo y "+
+    "propone la hoja de control: separa los trámites, reconoce fechas y tipos documentales con "+
+    "su asunto, propone la foliación y anota el estado del papel, como manchas o rasgaduras. "+
+    "Con eso el sistema asigna solo las fechas extremas, el periodo y la subserie. Todo queda "+
+    "como propuesta para que usted la revise. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>Diligenciar a mano</b> Lo lleva a la pestaña Hojas de control con la "+
+    "carpeta ya escrita y los datos del inventario. Úselo cuando la hoja ya está hecha en papel "+
+    "o cuando no quiera gastar cuota del modelo. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='caso'><b>No pertenece a la selección inventariada</b> El código no está en las "+
+    "7.699 carpetas del contrato. Revise el rótulo físico y el nombre del archivo.</div>"+
+    "<div class='caso'><b>DUPLICADO</b> Ese mismo archivo ya se cargó antes; se lo dice con la "+
+    "fecha y la hora.</div>"+
+    "<div class='caso'><b>El expediente es muy grande</b> Ya no hay que partirlo: el sistema "+
+    "corta el tomo en bloques y los lee encadenados, con la foliación corrida. Si de todos "+
+    "modos prefiere subirlo por partes, nómbrelas como quiera —AC-CP-00374_1.pdf, "+
+    "CARPETA_00374 parte 2.pdf, AC-CP-00374 (3).pdf— que se unen en un solo expediente.</div>"+
+    "<div class='caso'><b>El escaneo pesa muchísimo</b> A color pesa cerca de 1,5 MB por "+
+    "página y la lectura se vuelve lenta. En escala de grises a 300 puntos por pulgada, que "+
+    "es lo que pide la norma para documento textual, pesa la tercera parte.</div>" },
+
+  vHojas:{ t:"Hojas de control", h:
+    "<h4>Para qué sirve</h4><p>Para diligenciar la hoja F-GDM-007. Nada se describe solo: "+
+    "primero se verifica, después alguien la revisa, y solo entonces nace el ISAD(G).</p>"+
+    "<h4>Qué hace cada botón</h4>"+
+    "<div class='boton'><b>Traer datos</b> Busca la carpeta en el inventario del contrato y llena "+
+    "la serie, la subserie, el asunto, los folios y el responsable. No pisa lo que usted ya haya "+
+    "escrito. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>+ Agregar trámite</b> Añade un renglón al final. Si se saltó un folio, "+
+    "agréguelo y luego use Encadenar folios. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>Encadenar folios</b> Recorre los trámites y corre la foliación para que "+
+    "quede continua, conservando la extensión de cada uno. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>Guardar avance</b> Guarda sin verificar. Sirve para dejar la hoja a "+
+    "medias y seguir después. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>Guardar y verificar</b> Comprueba folios, fechas, tipo documental y "+
+    "clasificación. Si hay errores la hoja queda Devuelta con la lista; si no, queda "+
+    "<b>Hoja de control por revisar</b>. <span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='boton'><b>Marcar revisada</b> El paso humano. Confirma que alguien miró la hoja "+
+    "y quedó conforme. Solo entonces se habilita Generar ISAD(G). "+
+    "<span class='quien'>Cualquiera del equipo, menos quien la diligenció.</span></div>"+
+    "<div class='boton'><b>Generar ISAD(G)</b> Construye la descripción. Lo verificable lo pone el "+
+    "código; el título y el alcance los redacta el modelo y quedan marcados como propuesta. "+
+    "<span class='quien'>Cualquiera del equipo.</span></div>"+
+    "<div class='caso'><b>Solo tengo el folio inicial</b> Escríbalo y deje vacío el final. Se "+
+    "deduce del inicial del siguiente y, en el último, del total del inventario.</div>"+
+    "<div class='caso'><b>El rango viene en una celda</b> Escríbalo como 21-24 en Folio desde y "+
+    "deje vacío el hasta.</div>"+
+    "<div class='caso'><b>La subserie del inventario no está en la tabla del periodo</b> Se lo "+
+    "avisa y le muestra las que sí corresponden. Elija usted; la plataforma no inventa.</div>"+
+    "<div class='caso'><b>Sin periodo (S/F)</b> Escriba el periodo en la casilla de la derecha. "+
+    "Si los trámites traen fechas, la plataforma lo deduce sola y se lo dice.</div>" },
+
+  vCola:{ t:"Proceso", h:
+    "<h4>Para qué sirve</h4><p>Una sola lista, <b>un renglón por carpeta</b>, que responde dos "+
+    "preguntas: ¿se perdió algo de lo que subí? y ¿qué está esperando a quién?</p>"+
+    "<h4>Los recuadros son botones</h4><p>Cada recuadro de arriba filtra la lista. Tóquelo y "+
+    "abajo quedan solo esas carpetas; tóquelo otra vez y vuelven todas.</p>"+
+    "<h4>Las partes se pliegan</h4><p>Un tomo subido en ocho partes es UNA carpeta, no ocho "+
+    "renglones. Toque el renglón y se abren las partes, con el peso, las páginas y si cada una "+
+    "está de verdad en el disco.</p>"+
+    "<h4>Las tres maneras en que algo parece perderse</h4>"+
+    "<div class='caso'><b>Sin archivo en el disco</b> El expediente figura cargado pero el "+
+    "archivo no aparece en el almacén del servidor. Vuelva a subirlo en Cargue: el registro se "+
+    "reemplaza y no se duplica.</div>"+
+    "<div class='caso'><b>En el disco sin registrar</b> El documento está en el servidor pero no "+
+    "le corresponde ningún expediente. Pasa cuando alguien copia archivos a mano a la carpeta "+
+    "del almacén. Súbalo por la pantalla de Cargue.</div>"+
+    "<div class='caso'><b>Por leer</b> El archivo está y el expediente existe, pero nadie ha "+
+    "levantado la hoja. No está perdido: está esperando turno.</div>"+
+    "<h4>Qué hace cada botón del renglón</h4>"+
+    "<div class='boton'><b>Levantar con el modelo</b> Pone a leer el documento. Un tomo grande se "+
+    "parte solo en bloques y se lee encadenado; se demora varios minutos.</div>"+
+    "<div class='boton'><b>Volver a leer</b> En una carpeta devuelta, la manda a leer otra vez sin "+
+    "tener que corregir nada a mano.</div>"+
+    "<div class='boton'><b>Corregir</b> Abre la hoja con lo señalado en rojo.</div>"+
+    "<div class='boton'><b>📄 Ver</b> Abre el documento digitalizado al lado, para cotejar sin "+
+    "salirse de la pantalla.</div>"+
+    "<div class='caso'><b>Devuelto</b> Debajo del estado queda escrito <b>por qué</b> volvió. "+
+    "Si dice que el archivo no está en el disco, vuelva a subirlo; si dice otra cosa, corríjala "+
+    "y verifique de nuevo.</div>" },
+
+  vRevision:{ t:"Revisión y aprobación", h:
+    "<h4>Para qué sirve</h4><p>Ver cada descripción con su hoja de control, validarla y aprobarla. "+
+    "Son dos pasos distintos y de personas distintas.</p>"+
+    "<h4>Qué hace cada botón</h4>"+
+    "<div class='boton'><b>Abrir</b> Muestra la ficha completa, los trámites y toda la "+
+    "trazabilidad del expediente.</div>"+
+    "<div class='boton'><b>Validar ISAD(G)</b> Confirma que la descripción está bien redactada y "+
+    "completa. <span class='quien'>Camila, y también la dirección y la líder.</span></div>"+
+    "<div class='boton'><b>Aprobar y archivar</b> Cierra el trámite documental. Solo se habilita "+
+    "sobre una descripción ya validada, y nadie aprueba su propio trabajo. "+
+    "<span class='quien'>Maritza o Marlín.</span></div>"+
+    "<div class='boton'><b>Retirar del flujo</b> Para lo cargado por error. Pide el motivo, libera "+
+    "el código y guarda la carpeta treinta días en la papelera. "+
+    "<span class='quien'>Maritza o Marlín.</span></div>"+
+    "<div class='boton'><b>Restaurar del retiro</b> Devuelve al flujo una carpeta retirada, "+
+    "mientras siga en la papelera. <span class='quien'>Maritza o Marlín.</span></div>" },
+
+  vBuscar:{ t:"Localización de expedientes", h:
+    "<h4>Para qué sirve</h4><p>Saber dónde está una carpeta y en qué va.</p>"+
+    "<h4>Las tres numeraciones</h4><p>La caja de origen del archivo central, la caja de trabajo "+
+    "del contrato y la caja definitiva. El código anterior de la carpeta se conserva como "+
+    "referencia y no se reemplaza.</p>"+
+    "<div class='boton'><b>Buscar</b> Escriba el código en cualquier forma: AC-CP-00363, 363 o "+
+    "CARPETA_00363.</div>" },
+
+  vReubicacion:{ t:"Reubicación en cajas definitivas", h:
+    "<h4>Para qué sirve</h4><p>Asignar a su caja definitiva las carpetas ya aprobadas, imprimir "+
+    "los dos rótulos y dejar el inventario de salida en firme.</p>"+
+    "<h4>Qué hace cada botón</h4>"+
+    "<div class='boton'><b>Asignar a la caja</b> Mete en la caja las carpetas que usted marque, "+
+    "una o las que quepan, y les pone el número de carpeta consecutivo. "+
+    "<span class='quien'>Maritza o Marlín.</span></div>"+
+    "<div class='boton'><b>Ver rótulos</b> Arma el rótulo de caja F-GDM-008 con la relación de "+
+    "carpetas que quedaron, y el rótulo F-GDM-006 de cada una.</div>"+
+    "<div class='boton'><b>Cerrar la caja</b> Deja el inventario de esa caja en firme. Después de "+
+    "esto no se le agregan ni se le quitan carpetas. <span class='quien'>Maritza o Marlín.</span></div>"+
+    "<div class='boton'><b>Reabrir</b> Acto excepcional, queda registrado en las observaciones de "+
+    "la caja. <span class='quien'>Solo la dirección del proyecto.</span></div>"+
+    "<div class='caso'><b>MEZCLA DE PERIODOS</b> Una caja definitiva pertenece a un solo periodo. "+
+    "Si intenta meter la carpeta 0001 del periodo II junto a la 0023 del periodo V, la plataforma "+
+    "no lo permite y le dice cuáles son de cada periodo para que separe el envío.</div>"+
+    "<div class='caso'><b>Mezcla de series</b> Esa sí se permite, pero le queda el aviso, porque a "+
+    "veces el cierre de la caja lo obliga y la decisión es del archivero.</div>" },
+
+  vInstrumentos:{ t:"Instrumentos archivísticos", h:
+    "<h4>Para qué sirve</h4><p>Descargar en Excel lo que hay que entregarle al Servicio "+
+    "Geológico.</p>"+
+    "<h4>Qué hace cada botón</h4>"+
+    "<div class='boton'><b>Inventario de salida F-GDM-003</b> Sale sobre la plantilla oficial "+
+    "versión 9, con su encabezado y sus columnas. Incluye solo lo que ya está en caja "+
+    "definitiva, que es lo que de verdad se entrega.</div>"+
+    "<div class='boton'><b>Base de descripción ISAD(G)</b> Las 44 columnas de la plantilla del "+
+    "contrato, una fila por expediente descrito.</div>"+
+    "<div class='boton'><b>Hojas de control</b> Un libro con una pestaña por expediente, con su "+
+    "encabezado y sus trámites.</div>"+
+    "<div class='caso'><b>No hay expedientes que cumplan ese filtro</b> El inventario de salida "+
+    "solo incluye lo que ya tiene caja definitiva. Reubique primero en la pestaña Reubicación.</div>" },
+
+  vAvance:{ t:"Centro de control", h:
+    "<h4>Para qué sirve</h4><p>Ver el avance del contrato y cuánta cuota le queda hoy a cada "+
+    "modelo de lenguaje.</p>"+
+    "<h4>El reparto entre los dos modelos</h4><p>Los dos hacen el mismo trabajo, que es redactar "+
+    "la descripción. Los expedientes de cien folios en adelante van a Claude y los de menos a "+
+    "Gemini. Si al que le toca se le acabó la cuota, la plataforma pasa sola al otro. Si los dos "+
+    "se agotan, la descripción se construye solo con los datos verificados y no se inventa "+
+    "ningún texto.</p>"+
+    "<div class='caso'><b>Clave configurada dice no</b> Falta escribir esa clave en el archivo "+
+    ".env del proyecto.</div>" },
+
+  vAvance2:{ t:"Centro de control del contrato", h:
+    "<h4>Para qu\u00e9 sirve</h4><p>Para saber, cualquier d\u00eda y sin abrir un expediente, "+
+    "qu\u00e9 se hizo hoy, qui\u00e9n lo hizo y a qu\u00e9 ritmo vamos. Es lo que se lleva a "+
+    "una mesa de seguimiento con el Servicio Geol\u00f3gico.</p>"+
+    "<h4>Metros lineales</h4><p>Es la medida con la que se mide y se factura el contrato, "+
+    "as\u00ed que aqu\u00ed la ve sin sacar calculadora. Se deriva de los folios registrados a "+
+    "raz\u00f3n de cien folios por cent\u00edmetro, de modo que est\u00e1 disponible desde que "+
+    "existe la hoja de control y no espera a la descripci\u00f3n. En los formatos oficiales del "+
+    "Servicio Geol\u00f3gico no se agrega nada: esta cifra es para el seguimiento interno.</p>"+
+    "<h4>Embudo del proceso</h4><p>Cu\u00e1ntas carpetas hay en cada etapa, de las 7.699 "+
+    "inventariadas hasta las que ya est\u00e1n en caja definitiva. Lo que est\u00e1 en "+
+    "<b>Devueltas</b> es trabajo detenido esperando una correcci\u00f3n.</p>"+
+    "<h4>Producci\u00f3n de hoy</h4><p>Lo hecho en el d\u00eda, por labor y por persona. Con el "+
+    "selector se pueden ver los catorce d\u00edas anteriores. Sale de la bit\u00e1cora, as\u00ed "+
+    "que refleja el trabajo real: si un expediente se devolvi\u00f3 y se volvi\u00f3 a "+
+    "trabajar, quedan las dos cosas.</p>"+
+    "<h4>Ritmo y proyecci\u00f3n</h4><p>El promedio se saca sobre los d\u00edas en que "+
+    "<i>hubo</i> producci\u00f3n, no sobre los d\u00edas del calendario: un domingo sin trabajo "+
+    "no debe bajarle el promedio al equipo ni estirar la proyecci\u00f3n.</p>"+
+    "<div class='caso'><b>Todo en cero</b> No hay movimientos registrados ese d\u00eda. Si es "+
+    "hoy y el equipo s\u00ed trabaj\u00f3, revise que est\u00e9n entrando con su propio usuario: "+
+    "lo que no queda en la bit\u00e1cora no se cuenta.</div>"+
+    "<div class='caso'><b>La proyecci\u00f3n no aparece</b> Hace falta al menos un d\u00eda con "+
+    "descripciones generadas para poder calcular un promedio.</div>" },
+
+  vModelos:{ t:"Modelos de lenguaje", h:
+    "<h4>Para qu\u00e9 sirve</h4><p>Ver qui\u00e9n est\u00e1 trabajando y cu\u00e1nto le "+
+    "queda hoy. Trabajan Claude, Gemini y ChatGPT, y de cada uno todos los modelos que admita "+
+    "la cuenta cuya llave est\u00e9 escrita en el archivo .env.</p>"+
+    "<h4>C\u00f3mo se reparten el trabajo</h4><p>Todos hacen lo mismo: leer el expediente y "+
+    "redactar. Los expedientes de cien folios en adelante van a los modelos de m\u00e1s aliento "+
+    "y los de menos folios a los ligeros, y entre los del mismo nivel entra el que m\u00e1s cuota "+
+    "le quede. Si uno se agota o falla, el expediente pasa solo al siguiente. Si se acaban todos, "+
+    "el expediente espera: la plataforma nunca fabrica una descripci\u00f3n.</p>"+
+    "<div class='caso'><b>Dice: no, falta la clave en el archivo .env</b> Ese proveedor no tiene "+
+    "llave escrita. Abra el archivo .env de la carpeta del proyecto, escriba la llave despu\u00e9s "+
+    "del signo igual y ejecute <span class='mono'>docker compose restart api worker</span>. Con una "+
+    "sola llave ya funciona; cada una que agregue es m\u00e1s capacidad.</div>"+
+    "<div class='caso'><b>Buscar modelos nuevos</b> Le vuelve a preguntar a cada proveedor "+
+    "qu\u00e9 modelos tiene. La lista se refresca sola cada pocas horas, as\u00ed que este "+
+    "bot\u00f3n solo hace falta el d\u00eda que salga uno nuevo y lo quiera usar ya.</div>"+
+    "<div class='caso'><b>Un modelo aparece agotado con un error raro</b> Puede que el proveedor "+
+    "lo haya retirado o que no admita documentos. No hay que hacer nada: la plataforma dej\u00f3 "+
+    "de usarlo y sigui\u00f3 con los dem\u00e1s.</div>" },
+
+  vRecepcion:{ t:"Recepci\u00f3n t\u00e9cnica", h:
+    "<h4>Qu\u00e9 mide la plataforma al cargar</h4><p>Sin tocar el archivo: la resoluci\u00f3n "+
+    "real de cada p\u00e1gina, la profundidad de color, cu\u00e1ntas p\u00e1ginas trae, si ya "+
+    "tiene capa de texto, y su huella digital para poder probar despu\u00e9s que no ha "+
+    "cambiado.</p>"+
+    "<h4>Por qu\u00e9 no puede subir la resoluci\u00f3n</h4><p>Los puntos por pulgada son un "+
+    "par\u00e1metro de <b>captura</b>. Un expediente escaneado a 150 no se sube a 300: "+
+    "interpolar p\u00edxeles agranda el archivo sin recuperar informaci\u00f3n que nunca se "+
+    "registr\u00f3, y declarar 300 sobre eso falseando la calidad t\u00e9cnica es lo que un "+
+    "archivo hist\u00f3rico no puede permitirse. Por eso la plataforma mide y avisa, para que "+
+    "se vuelva a escanear a tiempo.</p>"+
+    "<h4>Dos copias, no una</h4><p>Del archivo cargado se guardan dos. La <b>matriz de "+
+    "preservaci\u00f3n</b> va a PDF/A con las im\u00e1genes intactas: es la reproducci\u00f3n "+
+    "fiel y es la que lee el modelo, porque conserva las manchas y la tinta desvanecida que "+
+    "alimentan las observaciones. La <b>copia de consulta</b> s\u00ed se endereza, se recorta y "+
+    "lleva texto buscable. Nunca se limpia la matriz.</p>"+
+    "<div class='caso'><b>Dice resoluci\u00f3n insuficiente</b> Hay que volver a escanear ese "+
+    "expediente. No se arregla desde la plataforma.</div>"+
+    "<div class='caso'><b>Dice blanco y negro puro</b> Se captur\u00f3 a un solo bit. Para "+
+    "documento hist\u00f3rico se pierde el detalle del soporte y de las tintas; conviene "+
+    "escala de grises o color.</div>" },
+
+  vCalidad:{ t:"Control de calidad", h:
+    "<h4>Para qué sirve</h4><p>Para revisar lo que llevamos hecho antes de que el Servicio "+
+    "Geol\u00f3gico lo revise. La plataforma pasa todas sus pruebas sobre cada expediente "+
+    "cargado y le dice qu\u00e9 carpeta est\u00e1 mal, qu\u00e9 prueba fall\u00f3 y en "+
+    "qu\u00e9 pantalla se corrige. No corrige nada sola: se\u00f1ala.</p>"+
+    "<h4>Los tres colores</h4><p><b>Error</b> es lo que no deber\u00eda pasar a la siguiente "+
+    "etapa as\u00ed. <b>Por revisar</b> puede estar bien, pero alguien tiene que mirarlo. "+
+    "<b>Aviso</b> es constancia y no detiene nada.</p>"+
+    "<h4>Qu\u00e9 revisa</h4><p>Que el periodo concuerde con las fechas del documento, que las "+
+    "fechas caigan dentro del rango del periodo, que la subserie salga de la tabla de valoraci\u00f3n "+
+    "de ese mismo periodo, que los folios no tengan saltos ni traslapes y cuadren con el inventario "+
+    "de origen, que el tipo documental diga de qu\u00e9 trata el tr\u00e1mite y no solo qu\u00e9 "+
+    "clase de papel es, que las descripciones aprobadas tengan sus elementos obligatorios, que nadie "+
+    "haya aprobado su propio trabajo, que no haya dos expedientes con el mismo c\u00f3digo de "+
+    "referencia y que ninguna caja definitiva tenga carpetas de dos periodos.</p>"+
+    "<div class='caso'><b>Dice que el periodo no concuerda con el inventario</b> No es un error "+
+    "suyo. El inventario de origen se levant\u00f3 con lo que se sab\u00eda entonces y a veces "+
+    "trae el periodo equivocado. La plataforma deja el expediente en el periodo que dicen las "+
+    "fechas del documento, porque el periodo identifica al productor que gener\u00f3 el "+
+    "tr\u00e1mite y eso lo prueba la fecha, no la casilla del inventario. Compruebe que la fecha "+
+    "que se ley\u00f3 es la que est\u00e1 en el papel. Si el inventario tiene raz\u00f3n, "+
+    "abra el expediente y fije el periodo a mano: lo que fija una persona manda.</div>"+
+    "<div class='caso'><b>Dice tipo documental sin asunto</b> Esto es archivo hist\u00f3rico y "+
+    "la hoja de control es el instrumento con el que alguien va a buscar dentro de treinta "+
+    "a\u00f1os. Poner solo \u00abOficio\u00bb no le sirve a nadie: tiene que decir de qu\u00e9 "+
+    "trata el tr\u00e1mite.</div>"+
+    "<div class='caso'><b>Descargar en Excel</b> Baja el mismo informe en un libro que se puede "+
+    "anexar a un acta o a un informe de avance, con una hoja de hallazgos y una de resumen.</div>" }
+};
+
+/* ----------------------------------------------------------------- utilidades */
+function ayuda(id){
+  const a = AYUDA[id];
+  document.getElementById("modalContenido").innerHTML =
+    a ? "<h3 style='margin:0;color:var(--tinta)'>"+a.t+"</h3>"+a.h
+      : "<p>La ayuda de esta pestaña se escribirá cuando la pantalla esté lista.</p>";
+  document.getElementById("modal").classList.remove("oculto");
+}
+function cerrarModal(){ document.getElementById("modal").classList.add("oculto"); }
+function esc(t){ const d=document.createElement("div"); d.textContent = t==null?"":String(t); return d.innerHTML; }
+function aviso(donde, clase, texto){
+  document.getElementById(donde).innerHTML = "<div class='aviso "+clase+"'>"+texto+"</div>";
+}
+
+async function pedir(ruta, opciones){
+  const config = Object.assign({ headers:{} }, opciones || {});
+  if (PASE) config.headers["Authorization"] = "Bearer " + PASE;
+  if (config.body) config.headers["Content-Type"] = "application/json";
+  const respuesta = await fetch(API + ruta, config);
+  const cuerpo = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) throw new Error(cuerpo.detail || ("El servidor respondió "+respuesta.status));
+  return cuerpo;
+}
+
+/* ----------------------------------------------------------------- navegación */
+function ponerResponsableDeLaSesion(){
+  const campo = document.getElementById("hcResp");
+  if (campo && SESION) campo.value = SESION.nombre;
+}
+
+function pintarMenu(){
+  const permitidas = (SESION && SESION.pestanas) ? SESION.pestanas : ["inicio"];
+  const menu = document.getElementById("menu");
+  menu.innerHTML = "";
+  VISTAS.filter(v => permitidas.indexOf(v.clave) !== -1).forEach((v, i) => {
+    const b = document.createElement("button");
+    b.textContent = v.titulo;
+    if (i === 0) b.className = "act";
+    b.onclick = () => mostrarVista(v, b);
+    menu.appendChild(b);
+  });
+}
+
+function mostrarVista(vista, btn){
+  latir(vista.clave === "inicio");
+  document.querySelectorAll(".vista").forEach(v => v.classList.add("oculto"));
+  const seccion = document.getElementById(vista.id);
+  if (seccion) seccion.classList.remove("oculto");
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("act"));
+  if (btn) btn.classList.add("act");
+  if (vista.al) vista.al();
+}
+
+/* ----------------------------------------------------------------- ingreso */
+async function entrar(){
+  const correo = document.getElementById("correo").value.trim();
+  const clave  = document.getElementById("clave").value;
+  const error = document.getElementById("errIngreso");
+  error.textContent = "";
+  if (!correo || !clave) { error.textContent = "Escriba su correo y su contraseña."; return; }
+  const boton = document.getElementById("btnIngresar");
+  boton.disabled = true; boton.textContent = "Verificando…";
+  try {
+    const respuesta = await fetch(API + "/usuarios/ingresar", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ correo: correo, clave: clave }) });
+    const r = await respuesta.json();
+    if (!respuesta.ok) throw new Error(r.detail || "No fue posible ingresar.");
+    PASE = r.pase; SESION = r.usuario;
+    if (r.aviso_llave) console.warn(r.aviso_llave);
+    if (SESION.debe_cambiar_clave) {
+      document.getElementById("formIngreso").classList.add("oculto");
+      document.getElementById("formCambio").classList.remove("oculto");
+      document.getElementById("claveNueva").focus();
+      return;
+    }
+    abrirPlataforma();
+  } catch (e) {
+    PASE = null; SESION = null; error.textContent = e.message;
+  } finally { boton.disabled = false; boton.textContent = "Ingresar"; }
+}
+
+async function cambiarClave(){
+  const nueva = document.getElementById("claveNueva").value;
+  const repite = document.getElementById("claveNueva2").value;
+  const error = document.getElementById("errCambio");
+  error.textContent = "";
+  if (nueva.length < 8) { error.textContent = "La contraseña debe tener al menos 8 caracteres."; return; }
+  if (nueva !== repite) { error.textContent = "Las dos contraseñas no coinciden."; return; }
+  const boton = document.getElementById("btnCambiar");
+  boton.disabled = true; boton.textContent = "Cambiando…";
+  try {
+    await pedir("/usuarios/cambiar-clave", { method:"POST", body: JSON.stringify({
+      clave_actual: document.getElementById("clave").value, clave_nueva: nueva }) });
+    SESION = await pedir("/usuarios/yo");
+    abrirPlataforma();
+  } catch (e) { error.textContent = e.message; }
+  finally { boton.disabled = false; boton.textContent = "Cambiar y entrar"; }
+}
+
+function abrirPlataforma(){
+  ponerResponsableDeLaSesion();
+  latir(true);
+  document.getElementById("quienNombre").textContent = SESION.nombre;
+  document.getElementById("quienRol").textContent = SESION.rol + " · " + SESION.funcion;
+  document.getElementById("pIngreso").classList.add("oculto");
+  document.getElementById("pApp").classList.remove("oculto");
+  pintarMenu();
+  agregarFila();
+  cargarInicio();
+}
+
+/* ----------------------------------------------------------------- inicio */
+/* ----------------------------------------------------------------- tablero en vivo */
+let LATIDO = null;
+
+async function cargarEnVivo(){
+  try {
+    const r = await pedir("/expedientes/ahora");
+    const e = r.embudo, universo = r.universo || 1;
+    const pct = x => Math.max(0, (100 * (x || 0) / universo));
+    const enCaja = e.en_caja_definitiva, aprob = Math.max(0, e.archivadas - enCaja);
+    const desc = Math.max(0, e.descritas - e.archivadas), hoja = Math.max(0, e.con_hoja_de_control - e.descritas);
+
+    document.getElementById("barraAvance").innerHTML =
+      "<i class='b1' style='width:" + pct(enCaja) + "%' title='En caja definitiva: " + enCaja + "'></i>" +
+      "<i class='b2' style='width:" + pct(aprob) + "%' title='Aprobadas: " + aprob + "'></i>" +
+      "<i class='b3' style='width:" + pct(desc) + "%' title='Descritas: " + desc + "'></i>" +
+      "<i class='b4' style='width:" + pct(hoja) + "%' title='Con hoja de control: " + hoja + "'></i>";
+
+    document.getElementById("leyendaAvance").innerHTML =
+      "<span><i class='b1' style='background:#2A6B66'></i>En caja definitiva " + enCaja + "</span>" +
+      "<span><i style='background:#4E9A93'></i>Aprobadas " + aprob + "</span>" +
+      "<span><i style='background:#8FBF98'></i>Descritas " + desc + "</span>" +
+      "<span><i style='background:#C9A227'></i>Con hoja de control " + hoja + "</span>" +
+      "<span><i style='background:var(--papel3)'></i>Sin empezar " +
+        Math.max(0, universo - e.con_hoja_de_control) + "</span>";
+
+    document.getElementById("avanceSello").textContent =
+      e.con_hoja_de_control + " de " + universo + " carpetas tocadas · " +
+      (100 * e.con_hoja_de_control / universo).toFixed(1) + "%";
+
+    const v = r.en_vuelo;
+    document.getElementById("enVuelo").innerHTML =
+      tarjeta(v.leyendo_el_modelo, "El modelo está leyendo", "ahora mismo", v.leyendo_el_modelo ? "rev" : "") +
+      tarjeta(v.esperando_lectura, "Esperando lectura", "en la cola") +
+      tarjeta(v.hojas_por_revisar, "Hojas por revisar", "esperan a una persona", v.hojas_por_revisar ? "rev" : "") +
+      tarjeta(v.listas_para_describir, "Listas para describir", "hoja ya aprobada") +
+      tarjeta(v.descripciones_por_validar, "Descripciones por validar", "") +
+      tarjeta(v.validadas_por_aprobar, "Por aprobar", "") +
+      tarjeta(v.devueltas, "Devueltas", "hay que corregirlas", v.devueltas ? "dev" : "");
+
+    const gente = r.trabajando || [];
+    document.getElementById("trabajando").innerHTML =
+      "<b>Quién está trabajando</b> <span class='e'>(movimientos de los últimos " + r.minutos + " minutos)</span>" +
+      (gente.length
+        ? "<div class='quien' style='margin-top:10px'>" + gente.map(g =>
+            "<div class='p'><b>" + esc(g.persona) + "</b>" +
+            Object.keys(g.labores).map(k => "<div class='e'>" + esc(k) + ": " + g.labores[k] + "</div>").join("") +
+            "<div class='e'>último a las " + esc((g.ultimo || "").slice(11)) + "</div></div>").join("") + "</div>"
+        : "<div class='e' style='margin-top:8px'>Nadie ha registrado movimientos en este rato.</div>");
+  } catch (err) {
+    document.getElementById("avanceSello").textContent = err.message;
+  }
+}
+
+function latir(encender){
+  if (LATIDO) { clearInterval(LATIDO); LATIDO = null; }
+  if (encender) { cargarEnVivo(); LATIDO = setInterval(cargarEnVivo, 15000); }
+}
+
+async function cargarInicio(){
+  const n = document.getElementById("estadoServidor"), d = document.getElementById("estadoDetalle");
+  try {
+    const salud = await pedir("/salud");
+    n.textContent = salud.estado.toUpperCase();
+    n.style.color = salud.estado === "operativo" ? "var(--verde)" : "var(--carmin)";
+    d.textContent = "Base de datos "+salud.base_de_datos+" · Tareas "+salud.intermediario_de_mensajes;
+  } catch (e) { n.textContent = "SIN CONEXIÓN"; n.style.color = "var(--carmin)"; d.textContent = e.message; }
+  pintarTablero("tablero");
+}
+
+async function pintarTablero(destino){
+  try {
+    const r = await pedir("/expedientes/resumen");
+    const caja = document.getElementById(destino);
+    caja.innerHTML =
+      tarjeta(r.total, "Expedientes en KUSTOS", r.inventario_de_origen+" carpetas en el inventario de origen", "") +
+      r.estados.filter(e => e.cantidad > 0 || ["Devuelto","Pendiente de revisión","Verificada, pendiente de describir"].indexOf(e.estado) !== -1)
+        .map(e => tarjeta(e.cantidad, e.estado, "", CLASE_ESTADO[e.estado] || "")).join("");
+  } catch (e) { document.getElementById(destino).innerHTML = "<div class='aviso mal'>"+esc(e.message)+"</div>"; }
+}
+function tarjeta(n, rotulo, extra, clase){
+  return "<div class='metro "+(clase||"")+"'><div class='n'>"+n+"</div><div class='r'>"+esc(rotulo)+"</div>"+
+         (extra ? "<div class='e'>"+esc(extra)+"</div>" : "")+"</div>";
+}
+
+/* ----------------------------------------------------------------- hoja de control */
+function agregarFila(datos, referencia){
+  const cuerpo = document.getElementById("cuerpoHc");
+  const tr = document.createElement("tr");
+  const d = datos || {};
+  const extra = CAMPOS_VISIBLES ? "" : " oculto";
+  tr.innerHTML =
+    "<td class='mono nItem'></td>"+
+    "<td><input class='fFecha' value='"+esc(d.fecha||"")+"' placeholder='11 de julio de 1931'></td>"+
+    "<td><input class='fTipo' value='"+esc(d.tipo||"")+"' placeholder='Oficio'></td>"+
+    "<td><input class='fDesde' value='"+esc(d.desde||"")+"'></td>"+
+    "<td><input class='fHasta' value='"+esc(d.hasta||"")+"'></td>"+
+    "<td><input class='fRad' value='"+esc(d.radicado||"N/A")+"'></td>"+
+    "<td class='colExtra"+extra+"'><input class='fSis' value='"+esc(d.sistema||"")+"' placeholder='N/A'></td>"+
+    "<td class='colExtra"+extra+"'><input class='fSgdea' value='"+esc(d.sgdea||"")+"' placeholder='N/A'></td>"+
+    "<td class='colExtra"+extra+"'><input class='fEnlace' value='"+esc(d.enlace||"")+"' placeholder='N/A'></td>"+
+    "<td><input class='fObs' value='"+esc(d.obs||"")+"'></td>"+
+    "<td style='white-space:nowrap'>"+
+      "<button class='btn2' onclick='insertarDebajo(this)' title='Inserta un trámite justo "+
+      "debajo de este, para el folio que se saltó'>+ Debajo</button> "+
+      "<button class='btn2' onclick='this.closest(\"tr\").remove();renumerar()'>Quitar</button></td>";
+  if (referencia && referencia.parentNode === cuerpo) cuerpo.insertBefore(tr, referencia.nextSibling);
+  else cuerpo.appendChild(tr);
+  renumerar();
+  return tr;
+}
+
+/* Inserta un trámite en medio de la hoja. Es lo que hace falta cuando al revisar contra el
+   papel aparece un documento que no se había registrado y los folios ya corren. */
+function insertarDebajo(boton){
+  const fila = boton.closest("tr");
+  const nueva = agregarFila({}, fila);
+  const anterior = parseInt(fila.querySelector(".fHasta").value || "0", 10);
+  if (anterior) nueva.querySelector(".fDesde").value = anterior + 1;
+  nueva.querySelector(".fTipo").focus();
+}
+let CAMPOS_VISIBLES = false;
+
+/* El formato F-GDM-007 tiene cuatro casillas más que casi siempre van en N/A. Se muestran
+   solo cuando hacen falta, para que la tabla no estorbe en el uso diario. */
+function alternarCampos(){
+  CAMPOS_VISIBLES = !CAMPOS_VISIBLES;
+  document.querySelectorAll(".colExtra").forEach(c => c.classList.toggle("oculto", !CAMPOS_VISIBLES));
+  document.getElementById("btnCampos").textContent = CAMPOS_VISIBLES
+    ? "Ocultar los demás campos" : "Mostrar los demás campos del formato";
+}
+
+function quitarUltima(){
+  const filas = document.querySelectorAll("#cuerpoHc tr");
+  if (filas.length <= 1) { aviso("hcResultado","info","La hoja debe tener al menos un trámite."); return; }
+  filas[filas.length - 1].remove();
+  renumerar();
+}
+
+function renumerar(){
+  document.querySelectorAll("#cuerpoHc tr").forEach((tr,i) => tr.querySelector(".nItem").textContent = i+1);
+}
+function encadenarFolios(){
+  let esperado = 1;
+  document.querySelectorAll("#cuerpoHc tr").forEach(tr => {
+    const desde = tr.querySelector(".fDesde"), hasta = tr.querySelector(".fHasta");
+    const d = parseInt(desde.value,10), h = parseInt(hasta.value,10);
+    const extension = (!isNaN(d) && !isNaN(h) && h >= d) ? (h - d + 1) : 1;
+    desde.value = esperado; hasta.value = esperado + extension - 1;
+    esperado = esperado + extension;
+  });
+}
+function leerHoja(modo){
+  const tramites = [];
+  document.querySelectorAll("#cuerpoHc tr").forEach((tr,i) => {
+    const v = c => tr.querySelector(c).value.trim();
+    if (!v(".fTipo") && !v(".fDesde") && !v(".fFecha")) return;
+    tramites.push({ no_item:i+1, fecha:v(".fFecha")||null, tipo_documental:v(".fTipo"),
+                    folio_desde:v(".fDesde")||null, folio_hasta:v(".fHasta")||null,
+                    no_radicado: (v(".fRad") || "N/A").toUpperCase() === "N/A" ? "N/A" : v(".fRad"),
+                    sistema_informacion:v(".fSis"),
+                    expediente_sgdea:v(".fSgdea"), enlace_acceso:v(".fEnlace"),
+                    observaciones:v(".fObs"), fila:i+1 });
+  });
+  const g = id => document.getElementById(id).value.trim();
+  const elegida = TVD_DEL_PERIODO.find(o => o.valor === g("hcTvd")) || {};
+  return { codigo_carpeta:g("hcCarpeta"), archivo_origen:"",
+           codigo_serie:elegida.cod_serie || "", serie:elegida.serie || "",
+           codigo_subserie:elegida.cod_subserie || "", subserie:elegida.subserie || "",
+           nombre_expediente:g("hcNombre"), responsable:g("hcResp"),
+           fecha_diligenciamiento:g("hcFecha"),
+           periodo_manual:g("hcPeriodo") || null, tramites:tramites, modo:modo };
+}
+async function guardarHoja(modo){
+  const cuerpo = leerHoja(modo);
+  if (!cuerpo.codigo_carpeta) { aviso("hcResultado","mal","Escriba el código de carpeta."); return; }
+  try {
+    const r = await pedir("/expedientes/hoja-de-control", { method:"POST", body: JSON.stringify(cuerpo) });
+    pintarVerificacion(r);
+    let resumen = "<b>" + esc(r.estado) + "</b>";
+    if (r.periodo) resumen += " · Periodo " + esc(r.periodo) + " (" + esc(r.origen_del_periodo) + ")";
+    if (r.subserie) resumen += " · " + esc(r.subserie);
+    resumen += " · " + r.tramites + " trámites · " + r.folios + " folios";
+    aviso("hcResultado", r.errores && r.errores.length ? "mal" : "ok", resumen);
+    document.getElementById("hcErrores").scrollIntoView({behavior:"smooth", block:"center"});
+    cargarHojasEnProceso();
+  } catch (e) { aviso("hcResultado","mal", esc(e.message)); }
+}
+
+/* Sombrea el renglón exacto y pone el mensaje debajo del campo que hay que corregir,
+   para no dejar a nadie buscando en una lista suelta cuál trámite falló. */
+function marcarErrores(localizados){
+  const filas = document.querySelectorAll("#cuerpoHc tr");
+  filas.forEach(tr => {
+    tr.classList.remove("malaFila");
+    tr.querySelectorAll(".errCelda").forEach(x => x.remove());
+  });
+  const campos = { fecha:".fFecha", tipo_documental:".fTipo",
+                   folio_desde:".fDesde", folio_hasta:".fHasta" };
+  localizados.forEach(e => {
+    const tr = filas[e.no_item - 1];
+    if (!tr) return;
+    tr.classList.add("malaFila");
+    const selector = campos[e.campo] || ".fObs";
+    const celda = tr.querySelector(selector);
+    if (!celda) return;
+    const nota = document.createElement("span");
+    nota.className = "errCelda";
+    nota.textContent = e.mensaje;
+    celda.parentElement.appendChild(nota);
+  });
+  const primera = document.querySelector("#cuerpoHc tr.malaFila");
+  if (primera) primera.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+async function cargarHojasEnProceso(){
+  const enProceso = ["En cola","En procesamiento","Hoja de control en elaboración",
+                     "Hoja de control por revisar","Hoja de control revisada","Devuelto"];
+  try {
+    const todas = await pedir("/expedientes?limite=500");
+    pintarTabla("cuerpoProceso2", todas.filter(e => enProceso.indexOf(e.estado) !== -1));
+  } catch (e) {
+    document.getElementById("cuerpoProceso2").innerHTML = "<tr><td colspan='6' class='vacio'>"+esc(e.message)+"</td></tr>";
+  }
+}
+
+/* ----------------------------------------------------------------- proceso
+
+   Antes esta pantalla eran dos tablas largas, una debajo de la otra: una por ARCHIVO y
+   otra por EXPEDIENTE, con seis recuadros de recuento encima que solo se miraban. Para
+   saber qué pasaba con una carpeta partida en cinco había que leer cinco renglones y
+   además buscarla en la otra tabla.
+
+   Ahora es una sola lista, un renglón por CARPETA. Las partes se pliegan dentro de su
+   carpeta y se abren tocándola. Los recuadros se volvieron botones: cada uno filtra. */
+
+let PROCESO = { cargas:null, expedientes:[], filas:[], filtro:"", abiertas:{} };
+
+async function cargarProceso(){
+  const cuerpo = document.getElementById("cuerpoProceso");
+  if (!cuerpo) return;
+  cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>Contando lo subido y mirando el disco…</td></tr>";
+  try {
+    const [cargas, expedientes] = await Promise.all([
+      pedir("/archivos/estado-de-cargas"),
+      pedir("/expedientes?limite=800")
+    ]);
+    PROCESO.cargas = cargas;
+    PROCESO.expedientes = expedientes || [];
+    PROCESO.filas = agruparPorCarpeta(cargas, PROCESO.expedientes);
+    pintarFrase(cargas.resumen);
+    pintarFichas();
+    pintarProceso();
+  } catch (e) {
+    cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>" + esc(e.message) + "</td></tr>";
+  }
+}
+/* El nombre viejo se conserva porque lo llaman otras pantallas al terminar algo. */
+function cargarEstadoDeCargas(){ return cargarProceso(); }
+
+/* Una carpeta es una unidad documental aunque se haya subido en ocho partes. Aquí se
+   vuelven a juntar: las partes son de la carpeta, no al revés. */
+function agruparPorCarpeta(cargas, expedientes){
+  const porCarpeta = {};
+  (cargas.detalle || []).forEach(a => {
+    const f = porCarpeta[a.carpeta] || (porCarpeta[a.carpeta] = {
+      carpeta:a.carpeta, partes:[], mb:0, paginas:0, faltan:0,
+      estado:a.estado, tramites:a.tramites || 0, folios:a.folios, ultima:"", motivo:"" });
+    f.partes.push(a);
+    f.mb += a.mb || 0;
+    f.paginas += a.paginas || 0;
+    if (!a.en_disco) f.faltan++;
+    if (a.subido_en > f.ultima) f.ultima = a.subido_en;
+    f.tramites = Math.max(f.tramites, a.tramites || 0);
+  });
+  /* Los expedientes que todavía no tienen documento subido también tienen que aparecer:
+     si no, una carpeta devuelta por falta de archivo se vuelve invisible justo aquí. */
+  (expedientes || []).forEach(e => {
+    const f = porCarpeta[e.codigo_carpeta] || (porCarpeta[e.codigo_carpeta] = {
+      carpeta:e.codigo_carpeta, partes:[], mb:0, paginas:0, faltan:0,
+      estado:e.estado, tramites:0, folios:e.folios, ultima:"", motivo:"" });
+    f.estado = e.estado;
+    f.folios = e.folios;
+    f.responsable = e.responsable;
+    const m = e.ultimo_movimiento || {};
+    if (m.motivo) f.motivo = m.motivo;
+  });
+  return Object.keys(porCarpeta).sort().map(k => porCarpeta[k]);
+}
+
+function pintarFrase(r){
+  const entre = (r.primera_carga && r.ultima_carga)
+    ? " Se subieron entre el " + esc(fechaBonita(r.primera_carga)) + " y el " +
+      esc(fechaBonita(r.ultima_carga)) + "."
+    : "";
+  document.getElementById("fraseProceso").innerHTML =
+    r.archivos_cargados
+      ? "El sistema tiene <b>" + r.archivos_cargados + " archivo(s)</b> de <b>" +
+        r.carpetas_distintas + " carpeta(s)</b>, con " + (r.folios_registrados || 0) +
+        " folios registrados." + entre
+      : "Todavía no se ha subido ningún documento.";
+}
+
+/* Los seis casos que importan, en el orden en que se atienden: primero lo que está roto,
+   después lo que espera, al final lo que ya salió. */
+const CASOS = [
+  { id:"",          rotulo:"Carpetas",     pie:"todo lo que hay en curso" },
+  { id:"faltan",    rotulo:"Sin archivo",  pie:"hay que volver a subirlos", tono:"alerta" },
+  { id:"devueltas", rotulo:"Devueltas",    pie:"hay que corregirlas o releerlas", tono:"alerta" },
+  { id:"por_leer",  rotulo:"Por leer",     pie:"esperan al modelo" },
+  { id:"por_revisar", rotulo:"Por revisar", pie:"el modelo ya propuso" },
+  { id:"listas",    rotulo:"Terminadas",   pie:"en inventario de salida", tono:"bien" }
+];
+
+function cuantasHay(id){
+  return PROCESO.filas.filter(f => casoDe(f, id)).length;
+}
+
+function casoDe(f, id){
+  if (!id) return true;
+  if (id === "faltan") return f.faltan > 0 || (!f.partes.length && f.estado !== "Archivado");
+  if (id === "devueltas") return f.estado === "Devuelto";
+  if (id === "por_leer") return f.partes.length && !f.faltan && !f.tramites &&
+                                f.estado !== "Devuelto";
+  if (id === "por_revisar") return ["Hoja de control en elaboración",
+                                    "Hoja de control por revisar",
+                                    "Hoja de control revisada"].indexOf(f.estado) !== -1;
+  if (id === "listas") return ["Archivado","En inventario",
+                               "Descripción validada"].indexOf(f.estado) !== -1;
+  return true;
+}
+
+function pintarFichas(){
+  document.getElementById("fichasProceso").innerHTML = CASOS.map(c => {
+    const n = cuantasHay(c.id);
+    const tono = (c.tono && n) ? " " + c.tono : "";
+    return "<button class='ficha" + tono + (PROCESO.filtro === c.id ? " viva" : "") +
+      "' onclick=\"filtrarProceso('" + c.id + "')\">" +
+      "<div class='n'>" + n + "</div><div class='r'><b>" + esc(c.rotulo) + "</b><br>" +
+      esc(c.pie) + "</div></button>";
+  }).join("");
+
+  const h = (PROCESO.cargas.huerfanos || []).length;
+  const aviso = document.getElementById("avisoProceso");
+  aviso.innerHTML = h
+    ? "<div class='aviso mal' style='margin-bottom:12px'><b>" + h + " archivo(s) están en el " +
+      "disco sin registrar</b>, seguramente copiados a mano a la carpeta del almacén. " +
+      "Súbalos por la pantalla de Cargue para que entren al flujo: " +
+      PROCESO.cargas.huerfanos.slice(0,4).map(x => esc(x.archivo)).join(", ") +
+      (h > 4 ? " y " + (h - 4) + " más." : ".") + "</div>"
+    : "";
+}
+
+function filtrarProceso(id){
+  PROCESO.filtro = (PROCESO.filtro === id && id) ? "" : id;
+  pintarFichas();
+  pintarProceso();
+}
+
+function pintarProceso(){
+  if (!PROCESO.cargas) return;
+  const cuerpo = document.getElementById("cuerpoProceso");
+  const busca = (document.getElementById("buscarProceso").value || "").trim().toUpperCase();
+  let lista = PROCESO.filas.filter(f => casoDe(f, PROCESO.filtro));
+  if (busca) lista = lista.filter(f => f.carpeta.toUpperCase().indexOf(busca) !== -1);
+
+  document.getElementById("cuentaProceso").textContent =
+    lista.length + " carpeta(s)" + (PROCESO.filtro || busca ? " con este filtro" : "");
+
+  if (!lista.length) {
+    cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>Ninguna carpeta en este caso.</td></tr>";
+    return;
+  }
+  cuerpo.innerHTML = lista.slice(0, 400).map(renglonDeCarpeta).join("");
+}
+
+function renglonDeCarpeta(f){
+  const abierta = !!PROCESO.abiertas[f.carpeta];
+  const partes = f.partes.length;
+
+  let que = partes
+    ? (partes > 1 ? "<b>" + partes + " partes</b>" : "1 archivo") +
+      "<div class='e'>" + (f.paginas ? f.paginas + " páginas · " : "") +
+      f.mb.toFixed(1) + " MB</div>"
+    : "<span class='e'>sin documento subido</span>";
+  if (f.faltan) que += "<div class='e' style='color:var(--carmin)'><b>" + f.faltan +
+                       " sin archivo en el disco</b></div>";
+
+  const estado = "<span class='pill " + tonoDe(f.estado) + "'>" + esc(f.estado) + "</span>" +
+    (f.tramites ? "<div class='e'>" + f.tramites + " trámite(s)" +
+                  (f.folios ? " · " + f.folios + " folios" : "") + "</div>" : "") +
+    (f.estado === "Devuelto" && f.motivo
+      ? "<div class='nota'>" + esc(f.motivo.length > 150 ? f.motivo.slice(0,150) + "…" : f.motivo) + "</div>"
+      : "");
+
+  const flecha = partes > 1
+    ? "<span class='flecha" + (abierta ? " abierta" : "") + "'>▸</span> " : "";
+
+  let fila = "<tr class='carpeta' onclick=\"abrirPartes('" + f.carpeta + "')\">" +
+    "<td class='mono'>" + flecha + esc(f.carpeta) + "</td>" +
+    "<td>" + que + "</td>" +
+    "<td class='mono'>" + esc(f.ultima ? fechaBonita(f.ultima) : "—") + "</td>" +
+    "<td>" + estado + "</td>" +
+    "<td onclick='event.stopPropagation()'>" + accionesDe(f) + "</td></tr>";
+
+  if (abierta && partes) {
+    fila += "<tr class='partes'><td colspan='5'>" +
+      "<div class='tituloPartes'>Las " + partes + " partes de " + esc(f.carpeta) + "</div>" +
+      "<ul class='listaPartes'>" +
+      f.partes.map(a =>
+        "<li><span class='mono' style='flex:0 0 68px'>" +
+          (a.fragmento ? "parte " + a.fragmento : "única") + "</span>" +
+        "<span class='arch'>" + esc(a.archivo) + "</span>" +
+        "<span class='e' style='flex:0 0 150px'>" + (a.paginas ? a.paginas + " pág · " : "") +
+          a.mb + " MB</span>" +
+        "<span style='flex:0 0 86px'>" + (a.en_disco
+          ? "<span class='pill apr'>en disco</span>"
+          : "<span class='pill dev'>NO está</span>") + "</span>" +
+        (a.en_disco ? "<button class='btn2' onclick=\"verDocumento('" + f.carpeta +
+                      "'," + (a.fragmento || 0) + ")\">📄 Ver</button>" : "") +
+        "</li>").join("") + "</ul></td></tr>";
+  }
+  return fila;
+}
+
+function tonoDe(estado){
+  if (estado === "Devuelto") return "dev";
+  if (["Archivado","En inventario","Descripción validada"].indexOf(estado) !== -1) return "apr";
+  if (estado === "En procesamiento") return "rev";
+  return "";
+}
+
+/* Un botón por renglón: el que sigue, no todos los posibles. */
+function accionesDe(f){
+  const c = f.carpeta;
+  if (!f.partes.length)
+    return "<span class='e'>Suba el documento en la pestaña Cargue.</span>";
+  if (f.faltan === f.partes.length)
+    return "<span class='e'>El archivo no está en el disco. Vuelva a subirlo en Cargue: " +
+           "el registro se reemplaza, no se duplica.</span>";
+  if (f.faltan)
+    return "<span class='e'>Falta(n) " + f.faltan + " parte(s) en el disco. Vuelva a subirlas.</span> ";
+
+  let b = "";
+  if (f.estado === "En cola" || (f.estado === "Devuelto" && !f.tramites))
+    b += "<button class='btn' onclick=\"levantarHoja('" + c + "')\">Levantar con el modelo</button> ";
+  else if (f.estado === "En procesamiento")
+    b += "<span class='pill rev'>el modelo está leyendo…</span> ";
+  else if (f.estado === "Hoja de control en elaboración")
+    b += "<button class='btn' onclick=\"irAHoja('" + c + "')\">Revisar lo propuesto</button> ";
+  else if (f.estado === "Hoja de control por revisar")
+    b += "<button class='btn' onclick=\"marcarRevisada('" + c + "')\">Marcar revisada</button> ";
+  else if (f.estado === "Hoja de control revisada")
+    b += "<button class='btn' onclick=\"generarIsadg('" + c + "')\">Generar ISAD(G)</button> ";
+  else if (f.estado === "Devuelto")
+    b += "<button class='btn' onclick=\"irAHoja('" + c + "')\">Corregir</button> " +
+         "<button class='btn2' onclick=\"levantarHoja('" + c + "')\">Volver a leer</button> ";
+  else
+    b += "<button class='btn2' onclick=\"verFicha('" + c + "')\">Ver ficha</button> ";
+  return b + "<button class='btn2' onclick=\"verDocumento('" + c + "')\">📄 Ver</button>";
+}
+
+function abrirPartes(carpeta){
+  PROCESO.abiertas[carpeta] = !PROCESO.abiertas[carpeta];
+  pintarProceso();
+}
+
+/* La tabla corta de la pantalla de Hoja de control. Estaba llamándose sin existir y por eso
+   salía «pintarTabla is not defined» en vez de la lista. */
+function pintarTabla(destino, lista){
+  const cuerpo = document.getElementById(destino);
+  if (!cuerpo) return;
+  if (!lista.length) {
+    cuerpo.innerHTML = "<tr><td colspan='6' class='vacio'>No hay hojas en proceso.</td></tr>";
+    return;
+  }
+  cuerpo.innerHTML = lista.map(e => {
+    const m = e.ultimo_movimiento || {};
+    const porque = (e.estado === "Devuelto" && m.motivo)
+      ? "<div class='nota'>" + esc(m.motivo.length > 180 ? m.motivo.slice(0,180) + "…" : m.motivo) + "</div>"
+      : "";
+    let acciones = "<button class='btn2' onclick=\"irAHoja('" + e.codigo_carpeta + "')\">Abrir</button>";
+    if (e.estado === "Devuelto")
+      acciones += " <button class='btn2' onclick=\"levantarHoja('" + e.codigo_carpeta + "')\">Volver a leer</button>";
+    return "<tr><td class='mono'>" + esc(e.codigo_carpeta) + "</td>" +
+           "<td>" + esc(e.estado) + porque + "</td>" +
+           "<td>" + (e.folios || "—") + "</td>" +
+           "<td class='mono'>" + esc(e.fechas_extremas || "S/F") + "</td>" +
+           "<td>" + esc(e.responsable || "—") + "</td>" +
+           "<td style='white-space:nowrap'>" + acciones + "</td></tr>";
+  }).join("");
+}
+
+
+/* «2026-09-11T14:32» se lee mal de un vistazo. «11/09/2026 · 2:32 p. m.» se lee de una. */
+function fechaBonita(iso){
+  if (!iso) return "—";
+  const f = new Date(iso);
+  if (isNaN(f)) return iso;
+  const dd = String(f.getDate()).padStart(2,"0");
+  const mm = String(f.getMonth()+1).padStart(2,"0");
+  let h = f.getHours(); const m = String(f.getMinutes()).padStart(2,"0");
+  const ampm = h < 12 ? "a. m." : "p. m.";
+  h = h % 12 || 12;
+  return dd + "/" + mm + "/" + f.getFullYear() + " · " + h + ":" + m + " " + ampm;
+}
+
+/* Pide al modelo que lea el expediente y proponga la hoja de control completa. El trabajo
+   se hace en segundo plano, así que la persona no se queda esperando frente a la pantalla. */
+/* Pone al modelo a leer el expediente y ESPERA a que termine, con la hoja de control ya
+   abierta en pantalla. Cuando el trabajador acaba, los trámites caen solos en sus casillas:
+   fecha, tipo documental, folios y observaciones. La persona revisa y corrige, no transcribe. */
+let ESPERANDO = null;
+
+async function levantarHoja(carpeta){
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/levantar-hoja", { method:"POST" });
+    await irAHoja(carpeta);
+    esperarAlModelo(carpeta);
+    cargarProceso();
+  } catch (e) { alert("No se pudo poner a leer: "+e.message); }
+}
+
+function esperarAlModelo(carpeta){
+  if (ESPERANDO) clearInterval(ESPERANDO);
+  const panel = document.getElementById("hcErrores");
+  const desde = Date.now();
+  const pintar = () => {
+    const seg = Math.round((Date.now() - desde) / 1000);
+    panel.innerHTML = "<div class='aviso info'><b>El modelo está leyendo " + esc(carpeta) + "…</b> " +
+      "van " + seg + " segundos. Según los folios puede tardar de uno a varios minutos. " +
+      "Cuando termine, los trámites aparecen aquí llenos y usted revisa." +
+      " <button class='btn2' style='margin-left:8px' onclick='dejarDeEsperar()'>Dejar de esperar</button></div>";
+  };
+  pintar();
+
+  ESPERANDO = setInterval(async () => {
+    pintar();
+    let f;
+    try { f = await pedir("/expedientes/" + carpeta); } catch (e) { return; }
+
+    if (f.estado === "Hoja de control en elaboración" || f.estado === "Hoja de control por revisar") {
+      dejarDeEsperar();
+      await volcarEnLaHoja(f);
+      panel.innerHTML = "<div class='aviso ok'><b>El modelo levantó la hoja de " + esc(carpeta) + ".</b> " +
+        f.tramites.length + " trámites y " + (f.folios || 0) + " folios, ya escritos en las casillas. " +
+        "Revíselos contra el papel, corrija lo que haga falta y pulse «Guardar y verificar».</div>";
+      cargarHojasEnProceso();
+    } else if (f.estado === "Devuelto" || f.estado === "En cola") {
+      dejarDeEsperar();
+      const ultima = f.ultimo_movimiento ? f.ultimo_movimiento.motivo : "";
+      panel.innerHTML = "<div class='aviso mal'><b>El modelo no pudo levantar la hoja de " +
+        esc(carpeta) + ".</b><br>" + esc(ultima || "Mire la bitácora del expediente.") + "</div>";
+      cargarHojasEnProceso();
+    }
+  }, 5000);
+}
+
+function dejarDeEsperar(){
+  if (ESPERANDO) { clearInterval(ESPERANDO); ESPERANDO = null; }
+}
+
+/* Escribe en las casillas de la hoja lo que el modelo propuso. */
+async function volcarEnLaHoja(f){
+  document.getElementById("hcCarpeta").value = f.codigo_carpeta;
+  /* Campo 7, no el título ISAD(G): son cosas distintas y viven en columnas distintas. */
+  const campo7 = f.nombre_expediente || f.titulo;
+  if (campo7) document.getElementById("hcNombre").value = campo7;
+  await cargarPeriodos();
+  if (f.periodo) {
+    document.getElementById("hcPeriodo").value = f.periodo;
+    /* La serie y la subserie que escogió el modelo por el contenido llegan ya seleccionadas.
+       Si se cargara la lista sin ellas, la pantalla borraría la clasificación que la
+       plataforma acaba de hacer y habría que escogerla otra vez a mano. */
+    await cargarTvd(f.periodo, f.cod_serie, f.cod_subserie,
+                    f.cod_subserie ? "la escogió el modelo por el contenido que leyó" : "",
+                    "media", f.codigo_dependencia);
+    cambiarPeriodo(f.periodo, true);
+  }
+  const cuerpo = document.getElementById("cuerpoHc");
+  cuerpo.innerHTML = "";
+  (f.tramites || []).forEach(t => agregarFila({
+    fecha: t.fecha || "", tipo: t.tipo_documental || "",
+    desde: t.folio_desde, hasta: t.folio_hasta,
+    radicado: t.no_radicado || "N/A",
+    obs: t.observaciones || "" }));
+  if (!cuerpo.children.length) agregarFila({});
+  document.getElementById("hcCarpeta").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+async function marcarRevisada(carpeta){
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/marcar-revisada", { method:"POST" });
+    alert(r.mensaje);
+    cargarHojasEnProceso(); cargarProceso();
+  } catch (e) { alert("No se pudo marcar como revisada: "+e.message); }
+}
+
+async function generarIsadg(carpeta){
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/generar-isadg", { method:"POST" });
+    alert("Descripción generada para " + carpeta +
+          "\\n\\nCódigo de referencia: " + r.codigo_referencia +
+          "\\nRedactada por: " + r.redactada_por + "\\n\\n" + r.mensaje);
+    cargarHojasEnProceso(); cargarProceso(); cargarRevision();
+  } catch (e) { alert("No se pudo generar: "+e.message); }
+}
+
+/* ----------------------------------------------------------------- revisión */
+async function cargarRevision(){
+  try {
+    const porValidar = await pedir("/expedientes?estado="+encodeURIComponent("Descripción por validar")+"&limite=300");
+    const validadas  = await pedir("/expedientes?estado="+encodeURIComponent("Descripción validada")+"&limite=300");
+    const lista = porValidar.concat(validadas);
+    const cuerpo = document.getElementById("cuerpoRevision");
+    if (!lista.length) { cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>No hay descripciones pendientes de revisión.</td></tr>"; return; }
+    const fichas = await Promise.all(lista.map(e => pedir("/expedientes/"+e.codigo_carpeta).catch(()=>null)));
+    cuerpo.innerHTML = fichas.filter(Boolean).map(f =>
+      "<tr><td class='mono'>"+esc(f.codigo_carpeta)+"</td><td class='mono'>"+esc(f.codigo_referencia||"—")+"</td>"+
+      "<td>"+esc((f.titulo||"—").substring(0,60))+"</td><td>"+esc(f.estado)+"</td>"+
+      "<td><button class='btn2' onclick=\"verFicha('"+f.codigo_carpeta+"')\">Abrir</button></td></tr>").join("");
+  } catch (e) {
+    document.getElementById("cuerpoRevision").innerHTML = "<tr><td colspan='5' class='vacio'>"+esc(e.message)+"</td></tr>";
+  }
+}
+
+function irAReubicacion(){
+  const vista = VISTAS.find(v => v.clave === "reubicacion");
+  const botones = Array.from(document.querySelectorAll("nav button"));
+  mostrarVista(vista, botones.find(b => b.textContent === vista.titulo));
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+async function marcarLibro(carpeta, esLibro){
+  const que = esLibro ? "libro empastado" : "carpeta suelta";
+  if (!confirm("¿Marcar " + carpeta + " como " + que + "?\n\nEn un libro empastado las fechas extremas se toman del primer y del último folio, porque el orden original no se puede alterar. En una carpeta suelta se toman la más antigua y la más reciente.")) return;
+  try {
+    const r = await pedir("/expedientes/" + carpeta + "/encuadernacion",
+      { method:"POST", body: JSON.stringify({ es_libro: esLibro }) });
+    let texto = r.mensaje;
+    if (r.avisos && r.avisos.length) texto += "\n\n" + r.avisos.join("\n");
+    alert(texto);
+    verFicha(carpeta);
+  } catch (e) { alert("No fue posible: " + e.message); }
+}
+
+async function verFicha(carpeta){
+  try {
+    const f = await pedir("/expedientes/"+carpeta);
+    const traza = await pedir("/expedientes/"+carpeta+"/trazabilidad").catch(()=>[]);
+    const campo = (r,v) => v ? "<tr><th style='width:230px'>"+esc(r)+"</th><td>"+esc(v)+"</td></tr>" : "";
+    let html = "<div class='caja' style='margin-top:18px'>"+
+      "<h2>"+esc(f.codigo_carpeta)+" <span style='font-weight:400;color:var(--texto2);font-size:14px'>"+esc(f.estado)+"</span></h2>"+
+      "<div class='tenv'><table>"+
+      campo("Código de referencia (3.1.1)", f.codigo_referencia)+
+      campo("Título (3.1.2)", f.titulo)+
+      campo("Fechas extremas (3.1.3)", f.fechas_extremas)+
+      campo("Volumen en folios (3.1.5)", f.folios)+
+      campo("Extensión en metros lineales (3.1.5)", f.metros_lineales)+
+      "<tr><th style='width:230px'>Unidad de conservación</th><td>"+
+        (f.es_libro === true ? "Libro empastado" : (f.es_libro === false ? "Carpeta suelta" : "<i>sin confirmar</i>"))+
+        (f.encuadernacion_por ? " <span style='color:var(--texto2);font-size:12px'>(lo fijó "+esc(f.encuadernacion_por)+")</span>" : "")+
+        "<div style='margin-top:6px'>"+
+        "<button class='btn2' onclick=\"marcarLibro('"+f.codigo_carpeta+"', true)\">Es un libro empastado</button> "+
+        "<button class='btn2' onclick=\"marcarLibro('"+f.codigo_carpeta+"', false)\">Es una carpeta suelta</button></div></td></tr>"+
+      campo("Productor (3.2.1)", f.nombre_productor)+
+      campo("Nivel de descripción (3.1.4)", f.nivel_descripcion)+
+      campo("Soporte", f.soporte)+
+      campo("Historia institucional (3.2.2)", f.historia_institucional)+
+      campo("Historia archivística (3.2.3)", f.historia_archivistica)+
+      campo("Forma de ingreso (3.2.4)", f.forma_ingreso)+
+      campo("Alcance y contenido (3.3.1)", f.alcance_contenido)+
+      campo("Valoración (3.3.2)", f.valoracion)+
+      campo("Nuevos ingresos (3.3.3)", f.nuevos_ingresos)+
+      campo("Organización (3.3.4)", f.organizacion)+
+      campo("Condiciones de acceso (3.4.1)", f.condiciones_acceso)+
+      campo("Condiciones de reproducción (3.4.2)", f.condiciones_reproduccion)+
+      campo("Lengua (3.4.3)", f.lengua)+
+      campo("Características físicas (3.4.4)", f.caracteristicas_fisicas)+
+      campo("Instrumentos de descripción (3.4.5)", f.instrumentos_descripcion)+
+      campo("Existencia de originales (3.5.1)", f.existencia_originales)+
+      campo("Existencia de copias (3.5.2)", f.existencia_copias)+
+      campo("Unidades relacionadas (3.5.3)", f.unidades_relacionadas)+
+      campo("Notas (3.6.1)", f.notas)+
+      campo("Nota del archivero (3.7.1)", f.nota_archivero)+
+      campo("Reglas y normas (3.7.2)", f.reglas_normas)+
+      campo("Fecha de la descripción (3.7.3)", f.fecha_descripcion)+
+      campo("Responsable de la hoja de control", f.responsable_hoja)+
+      campo("Elaboró la descripción", f.describio)+
+      campo("Aprobó", f.aprobo)+
+      campo("Caja de trabajo", f.caja_trabajo)+
+      campo("Caja definitiva", f.caja_definitiva)+
+      "</table></div>";
+
+    if (f.tramites && f.tramites.length) {
+      html += "<h2 style='margin-top:20px;font-size:16px'>Hoja de control · "+f.tramites.length+" trámites</h2>"+
+        "<div class='tenv'><table><thead><tr><th>N.º</th><th>Fecha</th><th>Tipo documental</th>"+
+        "<th>Folios</th><th>Observaciones</th></tr></thead><tbody>"+
+        f.tramites.map(t => "<tr><td class='mono'>"+t.no_item+"</td><td class='mono'>"+esc(t.fecha||"SF")+"</td>"+
+          "<td>"+esc(t.tipo_documental||"—")+"</td><td class='mono'>"+t.folio_desde+" a "+t.folio_hasta+"</td>"+
+          "<td>"+esc(t.observaciones||"")+"</td></tr>").join("")+"</tbody></table></div>";
+    }
+
+    if (traza.length) {
+      html += "<h2 style='margin-top:20px;font-size:16px'>Trazabilidad</h2><div class='tenv'><table>"+
+        "<thead><tr><th>Fecha</th><th>Acción</th><th>De</th><th>A</th><th>Quién</th><th>Motivo</th></tr></thead><tbody>"+
+        traza.map(h => "<tr><td class='mono'>"+esc(h.fecha.replace("T"," "))+"</td><td>"+esc(h.accion)+"</td>"+
+          "<td>"+esc(h.de||"—")+"</td><td>"+esc(h.a)+"</td><td>"+esc(h.usuario||"—")+"</td>"+
+          "<td>"+esc((h.motivo||"").substring(0,90))+"</td></tr>").join("")+"</tbody></table></div>";
+    }
+
+    html += "<div style='margin-top:16px;display:flex;gap:8px;flex-wrap:wrap'>";
+    if (f.estado === "Hoja de control por revisar")
+      html += "<button class='btn' onclick=\"marcarRevisada('"+carpeta+"')\">Aprobar la hoja de control</button>";
+    if (f.estado === "Hoja de control revisada") {
+      if (SESION.elabora_descripcion)
+        html += "<button class='btn' onclick=\"generarIsadg('"+carpeta+"')\">Generar ISAD(G)</button>";
+      else
+        html += "<span class='aviso info' style='margin:0'>La hoja está aprobada. La descripción "+
+                "ISAD(G) la genera la dirección del proyecto, la líder o la profesional a cargo "+
+                "de la descripción.</span>";
+    }
+    if (f.estado === "Descripción por validar" && SESION.valida_descripcion !== false)
+      html += "<button class='btn' onclick=\"validarIsadg('"+carpeta+"')\">Validar ISAD(G)</button>";
+    if (f.estado === "Descripción validada") {
+      const propia = f.describio && SESION.nombre &&
+        f.describio.toLowerCase().trim() === SESION.nombre.toLowerCase().trim();
+      if (SESION.aprueba_descripcion && !propia)
+        html += "<button class='btn' onclick=\"aprobar('"+carpeta+"')\">Aprobar y archivar</button>";
+      else if (propia)
+        html += "<span class='aviso info' style='margin:0'>Usted elaboró esta descripción, así que "+
+                "la aprueba otra persona. Nadie aprueba su propio trabajo.</span>";
+    }
+    if (f.estado === "Archivado")
+      html += "<button class='btn' onclick=\"irAReubicacion()\">Continuar: asignar caja definitiva</button>";
+    if (f.estado === "Retirado" && SESION.puede_retirar)
+      html += "<button class='btn' onclick=\"restaurar('"+carpeta+"')\">Restaurar del retiro</button>";
+    else if (SESION.puede_retirar && f.estado !== "En inventario de salida")
+      html += "<button class='btn2' onclick=\"retirar('"+carpeta+"')\">Retirar del flujo</button>";
+    html += "<button class='btn2' onclick=\"document.getElementById('fichaRevision').innerHTML=''\">Cerrar</button></div>";
+    if (f.retiro)
+      html += "<div class='aviso info' style='margin-top:14px'>Retirada: "+esc(f.retiro.motivo)+
+              " · lleva "+f.retiro.dias_en_papelera+" días en la papelera, se purga el "+esc(f.retiro.se_purga_el)+"</div>";
+    html += "</div>";
+
+    document.getElementById("fichaRevision").innerHTML = html;
+    document.getElementById("fichaRevision").scrollIntoView({behavior:"smooth"});
+  } catch (e) { alert(e.message); }
+}
+
+async function validarIsadg(carpeta){
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/validar-isadg", { method:"POST" });
+    alert(r.mensaje);
+    document.getElementById("fichaRevision").innerHTML = ""; cargarRevision();
+  } catch (e) { alert("No se pudo validar: "+e.message); }
+}
+
+async function aprobar(carpeta){
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/aprobar", { method:"POST" });
+    alert(r.mensaje); document.getElementById("fichaRevision").innerHTML = ""; cargarRevision();
+  } catch (e) { alert("No se pudo aprobar: "+e.message); }
+}
+async function retirar(carpeta){
+  const motivo = prompt("¿Por qué retira " + carpeta + " del flujo?\\n" +
+                        "El motivo queda en la bitácora (mínimo 10 caracteres).");
+  if (!motivo) return;
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/retirar", { method:"POST", body: JSON.stringify({motivo:motivo}) });
+    alert(r.mensaje + "\\n\\nSe purga el " + r.se_purga_el);
+    document.getElementById("fichaRevision").innerHTML = ""; cargarRevision(); cargarProceso();
+  } catch (e) { alert("No se pudo retirar: "+e.message); }
+}
+async function restaurar(carpeta){
+  try {
+    const r = await pedir("/expedientes/"+carpeta+"/restaurar", { method:"POST" });
+    alert(r.mensaje); document.getElementById("fichaRevision").innerHTML = ""; cargarProceso();
+  } catch (e) { alert("No se pudo restaurar: "+e.message); }
+}
+
+/* ----------------------------------------------------------------- localización */
+async function buscarCarpeta(){
+  const codigo = document.getElementById("buscarCodigo").value.trim();
+  if (!codigo) return;
+  try {
+    const f = await pedir("/expedientes/"+encodeURIComponent(codigo));
+    document.getElementById("resultadoBusqueda").innerHTML =
+      "<div class='rejilla'>"+
+      tarjeta(esc(f.caja_origen||"—"), "Caja de origen (archivo central)","","")+
+      tarjeta(esc(f.caja_trabajo||"—"), "Caja de trabajo (contrato 733)","","")+
+      tarjeta(esc(f.caja_definitiva||"—"), "Caja definitiva", f.carpeta_nueva?("carpeta "+f.carpeta_nueva):"", "apr")+
+      tarjeta(esc(f.estado), "Estado actual","", CLASE_ESTADO[f.estado]||"")+
+      "</div><div style='margin-top:14px'><button class='btn2' onclick=\"verFicha('"+f.codigo_carpeta+"')\">Ver la ficha completa</button></div>"+
+      "<div id='fichaRevision2'></div>";
+  } catch (e) { aviso("resultadoBusqueda","mal", esc(e.message)); }
+}
+
+/* ----------------------------------------------------------------- reubicación */
+async function cargarPendientesCaja(){
+  try {
+    const lista = await pedir("/reubicacion/pendientes");
+    const cuerpo = document.getElementById("rePendientes");
+    cuerpo.innerHTML = lista.length ? lista.map(c =>
+      "<tr><td><input type='checkbox' class='reSel' value='"+esc(c.codigo_carpeta)+"' "+
+      "data-periodo='"+esc(c.periodo)+"' style='width:auto'></td>"+
+      "<td class='mono'>"+esc(c.codigo_carpeta)+"</td><td><b>"+esc(c.periodo||"—")+"</b></td>"+
+      "<td>"+esc(c.serie||"—")+" › "+esc(c.subserie||"—")+"</td>"+
+      "<td class='mono'>"+esc(c.fechas||"S/F")+"</td><td>"+(c.folios||"—")+"</td>"+
+      "<td>"+esc((c.titulo||"").substring(0,60))+"</td></tr>").join("")
+      : "<tr><td colspan='7' class='vacio'>No hay descripciones aprobadas esperando caja.</td></tr>";
+  } catch (e) {
+    document.getElementById("rePendientes").innerHTML =
+      "<tr><td colspan='7' class='vacio'>"+esc(e.message)+"</td></tr>";
+  }
+  cargarCajas();
+}
+
+function marcarTodas(origen){
+  document.querySelectorAll(".reSel").forEach(c => c.checked = origen.checked);
+}
+
+async function asignarACaja(){
+  const caja = document.getElementById("reCaja").value.trim();
+  const marcadas = Array.from(document.querySelectorAll(".reSel:checked"));
+  if (!caja) { aviso("reAviso","mal","Escriba el número de la caja definitiva."); return; }
+  if (!marcadas.length) { aviso("reAviso","mal","Marque al menos una carpeta."); return; }
+
+  /* Aviso antes de llamar al servidor, para que no pierda el viaje */
+  const periodos = Array.from(new Set(marcadas.map(c => c.dataset.periodo).filter(Boolean)));
+  if (periodos.length > 1) {
+    aviso("reAviso","mal","<b>MEZCLA DE PERIODOS.</b> Marcó carpetas de "+periodos.length+
+      " periodos distintos ("+esc(periodos.join(", "))+"). Una caja definitiva pertenece a un solo "+
+      "periodo: marque las de un periodo y use otra caja para las demás.");
+    return;
+  }
+
+  try {
+    const r = await pedir("/reubicacion/asignar", { method:"POST",
+      body: JSON.stringify({ caja: caja, carpetas: marcadas.map(c => c.value) }) });
+    let html = "<div class='aviso ok'><b>"+esc(r.mensaje)+"</b><br>Caja del periodo "+
+      esc(r.periodo_de_la_caja)+" · "+r.total_en_la_caja+" carpeta(s) en total.";
+    if (r.asignadas.length)
+      html += "<ul style='margin:6px 0 0 18px'>"+r.asignadas.map(a =>
+        "<li>"+esc(a.carpeta)+" → carpeta N.º <b>"+a.no_carpeta+"</b></li>").join("")+"</ul>";
+    html += "</div>";
+    if (r.rechazadas.length)
+      html += "<div class='aviso mal'><b>No entraron</b><ul style='margin:6px 0 0 18px'>"+
+        r.rechazadas.map(x => "<li>"+esc(x.motivo)+"</li>").join("")+"</ul></div>";
+    if (r.avisos.length)
+      html += "<div class='aviso info'><ul style='margin:0 0 0 18px'>"+
+        r.avisos.map(a => "<li>"+esc(a)+"</li>").join("")+"</ul></div>";
+    html += "<div class='aviso info'><b>Lo que sigue con la caja "+esc(caja)+"</b><br>"+
+      "<div style='margin-top:8px;display:flex;gap:8px;flex-wrap:wrap'>"+
+      "<button class='btn' onclick=\"verRotulos('"+caja+"')\">Generar los rótulos de la caja y sus carpetas</button>"+
+      "<button class='btn2' onclick=\"descargarFuidDeCaja('"+caja+"')\">Descargar el inventario de salida de esta caja</button>"+
+      "<button class='btn2' onclick=\"cerrarCaja('"+caja+"')\">Cerrar la caja</button>"+
+      "</div><small>Los rótulos se arman con las carpetas que quedaron asignadas a la caja, "+
+      "así que si va a agregar más, genérelos al final.</small></div>";
+    document.getElementById("reAviso").innerHTML = html;
+    cargarPendientesCaja();
+  } catch (e) { aviso("reAviso","mal", esc(e.message)); }
+}
+
+async function descargarFuidDeCaja(caja){
+  try {
+    const respuesta = await fetch(API + "/instrumentos/fuid?caja=" + encodeURIComponent(caja),
+      { headers: PASE ? { "Authorization": "Bearer " + PASE } : {} });
+    if (!respuesta.ok) throw new Error("El servidor respondió " + respuesta.status);
+    const blob = await respuesta.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "FUID_" + caja + ".xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) { alert("No fue posible descargar el inventario: " + e.message); }
+}
+
+async function cargarCajas(){
+  try {
+    const cajas = await pedir("/reubicacion/cajas");
+    document.getElementById("reCajas").innerHTML = cajas.length ? cajas.map(c =>
+      "<tr><td class='mono'>"+esc(c.codigo)+"</td><td><b>"+esc(c.periodo||"—")+"</b></td>"+
+      "<td>"+c.total_carpetas+"</td>"+
+      "<td>"+(c.cerrada ? "<span style='color:var(--verde);font-weight:600'>cerrada</span>"+
+              "<div class='e'>por "+esc(c.cerrada_por||"")+"</div>" : "abierta")+"</td>"+
+      "<td><button class='btn2' onclick=\"verRotulos('"+c.codigo+"')\">Ver rótulos</button> "+
+      (c.cerrada
+        ? "<button class='btn2' onclick=\"reabrirCaja('"+c.codigo+"')\">Reabrir</button>"
+        : "<button class='btn' onclick=\"cerrarCaja('"+c.codigo+"')\">Cerrar la caja</button>")+
+      "</td></tr>").join("")
+      : "<tr><td colspan='5' class='vacio'>Todavía no hay cajas definitivas.</td></tr>";
+  } catch (e) {
+    document.getElementById("reCajas").innerHTML = "<tr><td colspan='5' class='vacio'>"+esc(e.message)+"</td></tr>";
+  }
+}
+
+async function cerrarCaja(caja){
+  if (!confirm("Cerrar la caja "+caja+".\n\nDespués de esto su inventario queda en firme y no se "+
+               "le pueden agregar ni quitar carpetas. ¿Continúa?")) return;
+  try { alert((await pedir("/reubicacion/caja/"+caja+"/cerrar", {method:"POST"})).mensaje); cargarCajas(); }
+  catch (e) { alert("No se pudo cerrar: "+e.message); }
+}
+async function reabrirCaja(caja){
+  if (!confirm("Reabrir la caja "+caja+" es un acto excepcional y queda registrado. ¿Continúa?")) return;
+  try { alert((await pedir("/reubicacion/caja/"+caja+"/reabrir", {method:"POST"})).mensaje); cargarCajas(); }
+  catch (e) { alert("No se pudo reabrir: "+e.message); }
+}
+
+async function verRotulos(caja){
+  try {
+    const r = await pedir("/reubicacion/caja/"+caja+"/rotulos");
+    const c = r.caja, f = c.fechas_extremas;
+    const fecha = x => (x.dd||x.mm||x.aaaa) ? (x.dd+" / "+x.mm+" / "+x.aaaa) : "—";
+    let html = "<div class='caja' style='margin-top:18px'>"+
+      "<h2>Rótulo de caja · "+esc(c.formato)+" versión "+esc(c.version)+"</h2>"+
+      "<div class='tenv'><table>"+
+      "<tr><th style='width:250px'>Código de dependencia</th><td>"+esc(c.codigo_dependencia||"—")+"</td></tr>"+
+      "<tr><th>Dependencia</th><td>"+esc(c.dependencia||"—")+"</td></tr>"+
+      "<tr><th>Serie</th><td>"+esc(c.serie||"—")+"</td></tr>"+
+      "<tr><th>Subserie</th><td>"+esc(c.subserie||"—")+"</td></tr>"+
+      "<tr><th>N.º de caja</th><td class='mono'>"+esc(c.no_caja)+" · periodo "+esc(c.periodo)+"</td></tr>"+
+      "<tr><th>Contenido</th><td>"+esc(c.contenido||"—")+"</td></tr>"+
+      "<tr><th>Carpetas</th><td>"+c.total_carpetas+" (N.º "+esc(c.rango_carpetas)+") · "+
+        c.total_folios+" folios</td></tr>"+
+      "<tr><th>Fechas extremas</th><td class='mono'>inicial "+fecha(f.inicial)+
+        " · final "+fecha(f.final)+"</td></tr></table></div>";
+
+    html += "<h2 style='margin-top:22px'>Rótulos de carpeta · F-GDM-006 versión 5</h2><div class='tenv'><table>"+
+      "<thead><tr><th>N.º</th><th>Código de origen</th><th>Serie › subserie</th><th>Nombre del expediente</th>"+
+      "<th>Folios</th><th>Tomo</th><th>Caja</th><th>Fechas extremas</th></tr></thead><tbody>"+
+      r.carpetas.map(p => "<tr><td class='mono'><b>"+p.no_carpeta+"</b></td>"+
+        "<td class='mono'>"+esc(p.codigo_carpeta_origen)+"</td>"+
+        "<td>"+esc(p.serie||"—")+" › "+esc(p.subserie||"—")+"</td>"+
+        "<td>"+esc((p.nombre_expediente||"").substring(0,55))+"</td>"+
+        "<td>"+(p.no_folios||"—")+"</td><td>"+esc(p.tomo)+"</td><td class='mono'>"+esc(p.no_caja)+"</td>"+
+        "<td class='mono'>"+fecha(p.fechas_extremas.inicial)+" a "+fecha(p.fechas_extremas.final)+"</td></tr>"
+      ).join("")+"</tbody></table></div>"+
+      "<p style='margin-top:14px'><button class='btn2' onclick='window.print()'>Imprimir</button> "+
+      "<button class='btn2' onclick=\"document.getElementById('reRotulos').innerHTML=''\">Cerrar</button></p></div>";
+    document.getElementById("reRotulos").innerHTML = html;
+    document.getElementById("reRotulos").scrollIntoView({behavior:"smooth"});
+  } catch (e) { alert(e.message); }
+}
+
+/* ----------------------------------------------------------------- instrumentos */
+async function cargarInstrumentos(){
+  try {
+    const r = await pedir("/instrumentos/resumen");
+    document.getElementById("insResumen").innerHTML =
+      tarjeta(r.en_inventario, "En inventario de salida", "listas para el FUID", "apr") +
+      tarjeta(r.aprobadas_sin_caja, "Aprobadas sin caja", "faltan por reubicar", "rev") +
+      tarjeta(r.con_descripcion, "Con descripción ISAD(G)", "", "") +
+      tarjeta(r.con_hoja_de_control, "Con hoja de control", "", "");
+    const cajas = document.getElementById("insCaja");
+    cajas.innerHTML = "<option value=''>Todas las cajas</option>" + r.cajas.map(c =>
+      "<option value='"+esc(c.codigo)+"'>"+esc(c.codigo)+" · periodo "+esc(c.periodo)+
+      " · "+c.carpetas+" carpetas"+(c.cerrada?" (cerrada)":"")+"</option>").join("");
+    const periodos = document.getElementById("insPeriodo");
+    periodos.innerHTML = "<option value=''>Todos los periodos</option>" +
+      r.periodos.map(p => "<option value='"+esc(p)+"'>Periodo "+esc(p)+"</option>").join("");
+  } catch (e) { aviso("insAviso","mal", esc(e.message)); }
+}
+
+/* La descarga lleva el pase de la sesión, así que no se puede pedir el archivo con solo
+   pegar la dirección en el navegador. */
+async function descargar(cual){
+  const caja = document.getElementById("insCaja").value;
+  const periodo = document.getElementById("insPeriodo").value;
+  const parametros = new URLSearchParams();
+  if (caja) parametros.set("caja", caja);
+  if (periodo) parametros.set("periodo", periodo);
+  aviso("insAviso","info","Generando el archivo…");
+  try {
+    const respuesta = await fetch(API + "/instrumentos/" + cual + "?" + parametros.toString(),
+      { headers:{ "Authorization": "Bearer " + PASE } });
+    if (!respuesta.ok) {
+      const e = await respuesta.json().catch(() => ({}));
+      throw new Error(e.detail || ("El servidor respondió " + respuesta.status));
+    }
+    const nombre = (respuesta.headers.get("Content-Disposition") || "")
+      .split("filename=")[1]?.replace(/"/g, "") || (cual + ".xlsx");
+    const blob = await respuesta.blob();
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = nombre;
+    document.body.appendChild(enlace); enlace.click(); enlace.remove();
+    URL.revokeObjectURL(enlace.href);
+    aviso("insAviso","ok","Descargado <b>"+esc(nombre)+"</b>.");
+  } catch (e) { aviso("insAviso","mal", esc(e.message)); }
+}
+
+/* Una hoja de control puntual, en el formato oficial. Se pide por código de carpeta y se
+   escribe como se quiera —«808», «ac-cp-808»—: la plataforma lo normaliza. */
+async function descargarHojaOficial(carpeta){
+  const donde = document.getElementById("insAviso") ? "insAviso" : "hcResultado";
+  if (!carpeta) { aviso(donde,"mal","Escriba el código de la carpeta."); return; }
+  aviso(donde,"info","Generando la hoja de control de <b>"+esc(carpeta)+"</b>…");
+  try {
+    const respuesta = await fetch(API + "/expedientes/" + encodeURIComponent(carpeta) + "/hoja-de-control.xlsx",
+      { headers:{ "Authorization": "Bearer " + PASE } });
+    if (!respuesta.ok) {
+      const e = await respuesta.json().catch(() => ({}));
+      throw new Error(e.detail || ("El servidor respondió " + respuesta.status));
+    }
+    const nombre = (respuesta.headers.get("Content-Disposition") || "")
+      .split("filename=")[1]?.replace(/"/g, "") || ("F-GDM-007_" + carpeta + ".xlsx");
+    const blob = await respuesta.blob();
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = nombre;
+    document.body.appendChild(enlace); enlace.click(); enlace.remove();
+    URL.revokeObjectURL(enlace.href);
+    aviso(donde,"ok","Descargada <b>"+esc(nombre)+"</b>.");
+  } catch (e) { aviso(donde,"mal", esc(e.message)); }
+}
+
+/* ----------------------------------------------------------------- visor del documento */
+/* El expediente digitalizado se pide con el pase de la sesión y se muestra desde la memoria
+   del navegador. No se puede poner la dirección directa en el marco porque entonces el
+   documento quedaría accesible sin haber iniciado sesión. */
+let VISOR = { carpeta:"", parte:0, copia:"original", url:null };
+
+async function verDocumento(carpeta, parte, copia){
+  if (!carpeta) { alert("Escriba primero el código de la carpeta."); return; }
+  VISOR.carpeta = carpeta;
+  VISOR.parte = parte || 0;
+  VISOR.copia = copia || "original";
+  document.getElementById("visor").classList.remove("oculto");
+  document.getElementById("visorTitulo").textContent = "Cargando " + carpeta + "…";
+  document.getElementById("visorCopia").textContent =
+    VISOR.copia === "consulta" ? "Ver el original" : "Ver la copia de consulta";
+  await pintarPartes(carpeta);
+  await traerDocumento();
+}
+
+async function traerDocumento(){
+  const marco = document.getElementById("visorMarco");
+  const titulo = document.getElementById("visorTitulo");
+  try {
+    const direccion = "/archivos/ver/" + encodeURIComponent(VISOR.carpeta) +
+      "?parte=" + VISOR.parte + "&copia=" + VISOR.copia;
+    const respuesta = await fetch(API + direccion, { headers:{ "Authorization": "Bearer " + PASE } });
+    if (!respuesta.ok) {
+      const e = await respuesta.json().catch(() => ({}));
+      throw new Error(e.detail || ("El servidor respondió " + respuesta.status));
+    }
+    if (VISOR.url) URL.revokeObjectURL(VISOR.url);
+    VISOR.url = URL.createObjectURL(await respuesta.blob());
+    marco.src = VISOR.url;
+    titulo.textContent = VISOR.carpeta + (VISOR.parte ? " · parte " + VISOR.parte : "") +
+      (VISOR.copia === "consulta" ? " · copia de consulta" : "");
+  } catch (e) {
+    marco.removeAttribute("src");
+    titulo.innerHTML = "<span style='color:var(--carmin)'>" + esc(e.message) + "</span>";
+  }
+}
+
+async function pintarPartes(carpeta){
+  const donde = document.getElementById("visorPartes");
+  donde.innerHTML = "";
+  try {
+    const partes = await pedir("/archivos/partes/" + encodeURIComponent(carpeta));
+    if (partes.length <= 1) return;
+    donde.innerHTML = partes.map(p =>
+      "<button class='btn2' style='padding:4px 10px' onclick='irAParte(" + p.fragmento + ")'>" +
+      (p.fragmento ? "parte " + p.fragmento : "completo") + "</button>").join("");
+  } catch (e) { /* sin partes, no pasa nada */ }
+}
+
+function irAParte(n){ VISOR.parte = n; traerDocumento(); }
+
+function alternarCopia(){
+  VISOR.copia = VISOR.copia === "consulta" ? "original" : "consulta";
+  document.getElementById("visorCopia").textContent =
+    VISOR.copia === "consulta" ? "Ver el original" : "Ver la copia de consulta";
+  traerDocumento();
+}
+
+function abrirEnPestana(){
+  if (VISOR.url) window.open(VISOR.url, "_blank");
+}
+
+function cerrarVisor(){
+  document.getElementById("visor").classList.add("oculto");
+  const marco = document.getElementById("visorMarco");
+  marco.removeAttribute("src");
+  if (VISOR.url) { URL.revokeObjectURL(VISOR.url); VISOR.url = null; }
+}
+
+/* ----------------------------------------------------------------- centro de control */
+/* ----------------------------------------------------------------- calidad */
+let CALIDAD_CARGANDO = false;
+
+async function cargarCalidad(){
+  if (CALIDAD_CARGANDO) return;
+  CALIDAD_CARGANDO = true;
+  const cuerpo = document.getElementById("cuerpoCalidad");
+  const resumen = document.getElementById("resumenCalidad");
+  cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>Revisando todo lo cargado. Puede tardar unos segundos…</td></tr>";
+  const selEstado = document.getElementById("filtroEstadoCalidad");
+  if (selEstado.options.length === 1) {
+    ESTADOS.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; selEstado.appendChild(o); });
+  }
+  try {
+    const partes = [];
+    const g = document.getElementById("filtroGravedad").value;
+    const es = selEstado.value;
+    if (g) partes.push("gravedad=" + encodeURIComponent(g));
+    if (es) partes.push("estado=" + encodeURIComponent(es));
+    const r = await pedir("/expedientes/calidad" + (partes.length ? "?" + partes.join("&") : ""));
+    const t = r.resumen;
+    resumen.innerHTML =
+      tarjeta(t.expedientes_revisados, "Expedientes revisados") +
+      tarjeta(t.errores, "Errores", "no deberían avanzar así", t.errores ? "dev" : "") +
+      tarjeta(t.por_revisar, "Por revisar", "puede que estén bien", t.por_revisar ? "rev" : "") +
+      tarjeta(t.hallazgos, "Hallazgos en total");
+    if (!r.hallazgos.length) {
+      cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>Ningún hallazgo con este filtro. Lo revisado está conforme.</td></tr>";
+      return;
+    }
+    cuerpo.innerHTML = r.hallazgos.map(h => {
+      const clase = h.gravedad === "error" ? "dev" : (h.gravedad === "revisar" ? "rev" : "");
+      const abrir = /^AC-CP-\d+$/.test(h.carpeta)
+        ? "<button class='btn2' onclick=\"verFicha('" + h.carpeta + "')\">Abrir</button>" : "";
+      return "<tr><td class='mono'>" + esc(h.carpeta) + "</td>" +
+             "<td><span class='pill " + clase + "'>" + esc(h.gravedad) + "</span></td>" +
+             "<td>" + esc(h.mensaje) + "</td>" +
+             "<td style='color:var(--texto2)'>" + esc(h.donde || "—") + "</td>" +
+             "<td>" + abrir + "</td></tr>";
+    }).join("");
+  } catch (e) {
+    cuerpo.innerHTML = "<tr><td colspan='5' class='vacio'>" + esc(e.message) + "</td></tr>";
+  } finally { CALIDAD_CARGANDO = false; }
+}
+
+async function descargarCalidad(){
+  const es = document.getElementById("filtroEstadoCalidad").value;
+  try {
+    const respuesta = await fetch(API + "/expedientes/calidad/excel" + (es ? "?estado=" + encodeURIComponent(es) : ""),
+      { headers: PASE ? { "Authorization": "Bearer " + PASE } : {} });
+    if (!respuesta.ok) throw new Error("El servidor respondió " + respuesta.status);
+    const blob = await respuesta.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "KUSTOS_calidad.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) { alert("No fue posible descargar el informe: " + e.message); }
+}
+
+
+/* ----------------------------------------------------------------- producción */
+const ROTULO_DIA = { hojas:"Hojas de control", descritas:"Descritas", validadas:"Validadas", reubicadas:"Reubicadas" };
+
+function llenarDiasProduccion(){
+  const sel = document.getElementById("diaProduccion");
+  if (sel.options.length) return;
+  const hoy = new Date();
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - i);
+    const iso = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    const o = document.createElement("option");
+    o.value = iso;
+    o.textContent = i === 0 ? "hoy" : (i === 1 ? "ayer" : iso);
+    sel.appendChild(o);
+  }
+}
+
+async function cargarProduccion(){
+  llenarDiasProduccion();
+  const dia = document.getElementById("diaProduccion").value;
+  try {
+    const p = await pedir("/expedientes/produccion" + (dia ? "?dia=" + encodeURIComponent(dia) : ""));
+    const e = p.embudo;
+    const pct = e.inventariadas ? (100 * e.descritas / e.inventariadas) : 0;
+    document.getElementById("selloAvance").innerHTML =
+      "<b>" + pct.toFixed(1) + "%</b> del universo inventariado con descripción · " +
+      e.descritas + " de " + e.inventariadas + " carpetas · " +
+      e.folios_registrados + " folios registrados · datos al " + esc(p.fecha);
+
+    const ml = x => (x == null ? "—" : x.toFixed(2).replace(".", ",") + " ML");
+    document.getElementById("metrosAvance").innerHTML =
+      tarjeta(ml(e.metros_lineales_cargados), "Cargados a la plataforma", e.folios_registrados + " folios registrados") +
+      tarjeta(ml(e.metros_lineales_con_hoja), "Con hoja de control", "formato F-GDM-007") +
+      tarjeta(ml(e.metros_lineales_descritos), "Descritos", "base ISAD(G)") +
+      tarjeta(ml(e.metros_lineales_aprobados), "Aprobados", "listos para inventario de salida", "apr") +
+      tarjeta(ml(e.metros_lineales_en_caja), "En caja definitiva", "reubicados en cajas AH-CJ", "apr");
+
+    document.getElementById("embudoAvance").innerHTML =
+      tarjeta(e.inventariadas, "Inventariadas", "universo del contrato") +
+      tarjeta(e.cargadas, "Cargadas al flujo", "han entrado a la plataforma") +
+      tarjeta(e.hoja_en_elaboracion, "Hoja en elaboración", "propuestas por revisar", e.hoja_en_elaboracion ? "rev" : "") +
+      tarjeta(e.con_hoja_de_control, "Con hoja de control", "formato F-GDM-007") +
+      tarjeta(e.descritas, "Descritas", "base ISAD(G)") +
+      tarjeta(e.validadas, "Validadas", "revisadas por otra persona") +
+      tarjeta(e.en_caja_definitiva, "En caja definitiva", "con caja AH-CJ asignada", "apr") +
+      tarjeta(e.devueltas, "Devueltas", "requieren corrección", e.devueltas ? "dev" : "");
+
+    const h = p.hoy || {};
+    const claves = Object.keys(h).filter(k => k !== "Total productivo del día");
+    document.getElementById("hoyAvance").innerHTML =
+      tarjeta(h["Total productivo del día"] || 0, "Total productivo del día", "", "apr") +
+      (claves.length ? claves.map(k => tarjeta(h[k], k)).join("")
+                     : "<div class='metro'><div class='n'>0</div><div class='r'>Sin movimientos registrados este día</div></div>");
+
+    const gente = p.hoy_por_persona || [];
+    document.getElementById("cuerpoHoyPersona").innerHTML = gente.length
+      ? gente.map(g => "<tr><td><b>" + esc(g.persona) + "</b></td>" +
+          "<td class='mono'>" + (g.labores["Hojas de control verificadas"] || 0) + "</td>" +
+          "<td class='mono'>" + (g.labores["Descripciones generadas"] || 0) + "</td>" +
+          "<td class='mono'>" + (g.labores["Descripciones validadas"] || 0) + "</td>" +
+          "<td class='mono'><b>" + g.total + "</b></td></tr>").join("")
+      : "<tr><td colspan='5' class='vacio'>Nadie registró movimientos este día.</td></tr>";
+
+    const r = p.ritmo || {};
+    document.getElementById("ritmoAvance").innerHTML =
+      "<div class='rejilla'>" +
+      tarjeta(r.dias_trabajados || 0, "Días con producción") +
+      tarjeta(r.promedio_descritas_por_dia || 0, "Descritas por día trabajado") +
+      tarjeta(r.faltan || 0, "Carpetas que faltan") +
+      tarjeta(r.dias_estimados == null ? "—" : r.dias_estimados, "Días de producción restantes",
+              r.fecha_estimada ? ("terminaría el " + r.fecha_estimada) : "") +
+      "</div><p class='sub' style='margin:12px 0 0'>" + esc(r.nota || "") + "</p>";
+
+    const dias = p.por_dia || [];
+    document.getElementById("cuerpoPorDia").innerHTML = dias.length
+      ? dias.map(d => "<tr><td class='mono'>" + esc(d.dia) + "</td><td class='mono'>" + d.hojas +
+          "</td><td class='mono'>" + d.descritas + "</td><td class='mono'>" + d.validadas +
+          "</td><td class='mono'>" + d.reubicadas + "</td><td class='mono'><b>" + d.total + "</b></td></tr>").join("")
+      : "<tr><td colspan='6' class='vacio'>Todavía no hay días con producción registrada.</td></tr>";
+
+    const acum = p.acumulado_por_persona || [];
+    document.getElementById("cuerpoAcumulado").innerHTML = acum.length
+      ? acum.map(g => "<tr><td><b>" + esc(g.persona) + "</b></td><td class='mono'>" + g.hojas +
+          "</td><td class='mono'>" + g.descritas + "</td><td class='mono'>" + g.validadas +
+          "</td><td class='mono'><b>" + g.total + "</b></td></tr>").join("")
+      : "<tr><td colspan='5' class='vacio'>Sin producción registrada todavía.</td></tr>";
+  } catch (err) {
+    document.getElementById("selloAvance").innerHTML = "<span style='color:var(--carmin)'>" + esc(err.message) + "</span>";
+  }
+}
+
+async function cargarAvance(refrescar){
+  cargarProduccion();
+  try {
+    const modelos = await pedir("/expedientes/modelos/disponibilidad" + (refrescar === true ? "?refrescar=true" : ""));
+    const rotulo = { alto:"expedientes grandes", medio:"expedientes medianos", bajo:"expedientes pequeños" };
+    document.getElementById("cuerpoModelos").innerHTML = modelos.map(m =>
+      "<tr><td><b>"+esc(m.proveedor)+"</b>"+
+      (m.llave && m.llave !== "única" && m.llave !== "—" ? "<div style='color:var(--texto2);font-size:12px'>"+esc(m.llave)+"</div>" : "")+
+      "</td><td class='mono'>"+esc(m.modelo)+"</td>"+
+      "<td>"+esc(rotulo[m.nivel] || m.nivel || "—")+"</td>"+
+      "<td>"+(m.configurado ? "sí" : "no, falta la clave en el archivo .env")+"</td>"+
+      "<td class='mono'>"+m.usadas+" de "+m.cuota_diaria+"</td><td class='mono'>"+m.restantes+"</td>"+
+      "<td>"+(m.agotado ? "agotado" : "disponible")+
+      (m.ultimo_error ? "<div style='color:var(--texto2);font-size:12px'>"+esc(m.ultimo_error.substring(0,90))+"</div>" : "")+
+      "</td></tr>").join("");
+  } catch (e) {
+    document.getElementById("cuerpoModelos").innerHTML = "<tr><td colspan='7' class='vacio'>"+esc(e.message)+"</td></tr>";
+  }
+}
+
+/* ----------------------------------------------------------------- arranque */
+document.getElementById("btnIngresar").addEventListener("click", entrar);
+document.getElementById("btnCambiar").addEventListener("click", cambiarClave);
+document.getElementById("correo").addEventListener("keydown", e => { if (e.key === "Enter") entrar(); });
+document.getElementById("clave").addEventListener("keydown", e => { if (e.key === "Enter") entrar(); });
+document.getElementById("claveNueva2").addEventListener("keydown", e => { if (e.key === "Enter") cambiarClave(); });
+
+const zona = document.getElementById("zona");
+["dragenter","dragover"].forEach(ev => zona.addEventListener(ev, e => { e.preventDefault(); zona.classList.add("on"); }));
+["dragleave","drop"].forEach(ev => zona.addEventListener(ev, e => { e.preventDefault(); zona.classList.remove("on"); }));
+zona.addEventListener("drop", e => subirArchivos(Array.from(e.dataTransfer.files)));
+document.getElementById("selHojas").addEventListener("change", e => {
+  subirHojasDeControl(Array.from(e.target.files)); e.target.value = "";
+});
+
+/* Importa hojas de control diligenciadas fuera de la plataforma. Se verifican con las mismas
+   reglas que las de aquí, y lo que esté mal sale con el número del trámite y la fila del Excel. */
+async function subirHojasDeControl(archivos){
+  if (!archivos.length) return;
+  const salida = document.getElementById("resultadoHojas");
+  salida.innerHTML = "<div class='aviso info'>Leyendo " + archivos.length + " libro(s)…</div>";
+  let html = "";
+  for (const archivo of archivos) {
+    const cuerpo = new FormData();
+    cuerpo.append("archivo", archivo);
+    try {
+      const respuesta = await fetch(API + "/archivos/hoja-de-control",
+        { method:"POST", headers:{ "Authorization": "Bearer " + PASE }, body: cuerpo });
+      const r = await respuesta.json();
+      if (!respuesta.ok) throw new Error(r.detail || ("El servidor respondió " + respuesta.status));
+
+      html += "<div class='aviso " + (r.con_errores ? "info" : "ok") + "'><b>" + esc(archivo.name) +
+              "</b> · " + esc(r.mensaje) + "</div>";
+      if (r.resultados.length) {
+        html += "<div class='tenv'><table><thead><tr><th>Carpeta</th><th>Pestaña</th>" +
+                "<th>Trámites</th><th>Folios</th><th>Periodo</th><th>Estado</th><th>Qué corregir</th>" +
+                "<th></th></tr></thead><tbody>";
+        r.resultados.forEach(x => {
+          const errores = (x.errores || []);
+          html += "<tr><td class='mono'>" + esc(x.carpeta) + "</td><td>" + esc(x.hoja || "—") + "</td>" +
+            "<td class='mono'>" + x.tramites + "</td><td class='mono'>" + x.folios + "</td>" +
+            "<td>" + esc(x.periodo || "—") + "</td>" +
+            "<td><span class='pill " + (errores.length ? "dev" : "") + "'>" + esc(x.estado) + "</span></td>" +
+            "<td>" + (errores.length
+              ? "<ul style='margin:0 0 0 16px'>" + errores.slice(0,6).map(m => "<li>" + esc(m) + "</li>").join("") +
+                (errores.length > 6 ? "<li>y " + (errores.length - 6) + " más</li>" : "") + "</ul>"
+              : "<span style='color:var(--verde)'>sin errores</span>") + "</td>" +
+            "<td><button class='btn2' onclick=\"irAHoja('" + x.carpeta + "')\">Abrir</button></td></tr>";
+        });
+        html += "</tbody></table></div>";
+      }
+      (r.rechazadas || []).forEach(x => {
+        html += "<div class='aviso mal'><b>" + esc(x.hoja || x.carpeta || "—") + "</b> · " + esc(x.motivo) + "</div>";
+      });
+    } catch (err) {
+      html += "<div class='aviso mal'><b>" + esc(archivo.name) + "</b> · " + esc(err.message) + "</div>";
+    }
+    salida.innerHTML = html;
+  }
+}
+
+document.getElementById("selArchivos").addEventListener("change", e => {
+  subirArchivos(Array.from(e.target.files)); e.target.value = "";
+});
+
+async function subirArchivos(archivos){
+  if (!archivos.length) return;
+  const salida = document.getElementById("lecturaNombres");
+  const barra = document.getElementById("barraCargue");
+  barra.classList.remove("oculto");
+  let filas = "";
+  for (let i = 0; i < archivos.length; i++) {
+    barra.querySelector("i").style.width = Math.round((i / archivos.length) * 100) + "%";
+    filas += await subirUno(archivos[i]);
+    salida.innerHTML = tablaCargue(filas);
+  }
+  barra.querySelector("i").style.width = "100%";
+  setTimeout(() => barra.classList.add("oculto"), 900);
+}
+
+function tablaCargue(filas){
+  return "<div class='tenv'><table><thead><tr><th>Archivo</th><th>Carpeta</th>"+
+    "<th>Según el inventario</th><th>Recepción técnica</th><th>Resultado</th><th></th></tr></thead><tbody>"+
+    filas+"</tbody></table></div>";
+}
+
+/* Lo que la plataforma midió del archivo sin tocarlo. La resolución es de captura: si entró
+   por debajo del mínimo hay que volver a escanear, y conviene verlo aquí y no al entregar. */
+function celdaTecnica(f){
+  if (!f) return "<td>—</td>";
+  if (f.error) return "<td><span style='color:var(--carmin)'>"+esc(f.error)+"</span></td>";
+  const ppp = f.dpi_minimo == null ? "sin medir" : (f.dpi_minimo + " ppp");
+  const color = f.cumple ? "var(--verde)" : "var(--carmin)";
+  let html = "<td><b style='color:"+color+"'>"+esc(ppp)+"</b>";
+  if (f.dpi_minimo != null && !f.cumple) html += " <span class='e'>mínimo "+f.umbral_dpi+"</span>";
+  html += "<div class='e'>"+f.paginas+" páginas"+
+    (f.bits_por_color ? " · "+f.bits_por_color+" bits" : "")+
+    (f.tiene_capa_de_texto ? " · ya trae texto" : "")+"</div>";
+  (f.avisos || []).forEach(a => {
+    html += "<div class='e' style='color:var(--carmin);max-width:280px'>"+esc(a)+"</div>";
+  });
+  return html + "</td>";
+}
+
+async function subirUno(archivo){
+  const cuerpo = new FormData();
+  cuerpo.append("archivo", archivo);
+  const celdaArchivo = "<td>"+esc(archivo.name)+"<div class='e'>"+(archivo.size/1048576).toFixed(2)+" MB</div></td>";
+  try {
+    const respuesta = await fetch(API + "/archivos/cargar",
+      { method:"POST", headers:{ "Authorization": "Bearer " + PASE }, body: cuerpo });
+    const r = await respuesta.json();
+    if (!respuesta.ok) throw new Error(r.detail || ("El servidor respondió "+respuesta.status));
+    const inventario = "Periodo "+esc(r.periodo_inventario)+" · "+(r.folios_inventario||"?")+" folios · caja "+
+      esc(r.caja_origen||"—")+"<div class='e'>"+esc((r.asunto_inventario||"").substring(0,90))+"</div>";
+    return "<tr>"+celdaArchivo+"<td class='mono'>"+esc(r.carpeta)+
+      (r.fragmento ? " <span class='e'>parte "+r.fragmento+"</span>" : "")+"</td>"+
+      "<td>"+inventario+"</td>"+
+      celdaTecnica(r.ficha_tecnica)+
+      "<td><span style='color:var(--verde);font-weight:600'>"+esc(r.estado)+"</span></td>"+
+      "<td>"+(r.levantamiento_automatico
+        ? "<span class='pill rev'>el modelo la está leyendo</span>"+
+          "<div style='margin-top:6px'><button class='btn2' onclick=\"irAHoja('"+r.carpeta+"')\">Ver la hoja</button></div>"
+        : "<button class='btn' onclick=\"levantarHoja('"+r.carpeta+"')\">Levantar con el modelo</button>"+
+          "<div style='margin-top:6px'><button class='btn2' onclick=\"irAHoja('"+r.carpeta+"')\">Diligenciar a mano</button></div>")+
+      "</td></tr>";
+  } catch (e) {
+    return "<tr>"+celdaArchivo+"<td class='mono'>—</td><td>—</td><td>—</td>"+
+      "<td><span style='color:var(--carmin)'>"+esc(e.message)+"</span></td><td></td></tr>";
+  }
+}
+
+/* Lleva a la pestaña Hojas de control con la carpeta ya escrita y los datos del
+   inventario a la vista, para no tener que buscarlos. */
+async function irAHoja(carpeta){
+  const vista = VISTAS.find(v => v.clave === "hojas");
+  const boton = Array.from(document.querySelectorAll("nav button")).find(b => b.textContent === vista.titulo);
+  mostrarVista(vista, boton);
+  document.getElementById("hcCarpeta").value = carpeta;
+  await prellenarDesdeInventario();
+  document.getElementById("hcCarpeta").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+/* Trae del inventario de origen lo que ya está escrito, para no volverlo a escribir:
+   serie, subserie, folios declarados, asunto y periodo. */
+/* El botón del modelo solo se ofrece cuando hay un documento que leer. Si el archivo no está
+   en el almacén no sirve de nada pulsarlo: se dice qué falta y dónde se resuelve. */
+function mostrarEstadoDelDocumento(f){
+  const boton = document.getElementById("btnLevantar");
+  const linea = document.getElementById("hcDatosCaja");
+  const d = f && f.documento;
+  if (!boton) return;
+
+  if (f && (f.estado === "En procesamiento")) {
+    boton.disabled = true;
+    boton.textContent = "Elaborándose…";
+    linea.innerHTML = "<b style='color:var(--ocre)'>El modelo está leyendo este expediente en " +
+      "este momento.</b> Espere a que termine.";
+    return;
+  }
+  boton.disabled = false;
+  boton.textContent = "Levantar con el modelo";
+
+  if (!d) return;
+  if (!d.cargados) {
+    boton.disabled = true;
+    boton.textContent = "Sin documento cargado";
+    linea.innerHTML = "<b style='color:var(--carmin)'>Esta carpeta no tiene documento " +
+      "digitalizado.</b> Cárguelo en la pestaña Cargue y vuelva.";
+  } else if (!d.se_puede_leer) {
+    boton.disabled = true;
+    boton.textContent = "El archivo no está";
+    linea.innerHTML = "<b style='color:var(--carmin)'>El documento figura cargado pero el " +
+      "archivo no está en el almacén: " + esc((d.faltantes || []).join(", ")) + ".</b> " +
+      "Vuelva a subirlo en la pestaña Cargue.";
+  }
+}
+
+/* ------------------------------------------------- periodo en lista desplegable */
+let PERIODOS = [];
+
+async function cargarPeriodos(){
+  if (PERIODOS.length) return PERIODOS;
+  try { PERIODOS = await pedir("/expedientes/periodos"); } catch (e) { PERIODOS = []; }
+  const sel = document.getElementById("hcPeriodo");
+  const elegido = sel.value;
+  sel.innerHTML = "<option value=''>— sin asignar —</option>" +
+    PERIODOS.map(p => "<option value='" + esc(p.romano) + "'>Periodo " + esc(p.romano) +
+      " · " + esc(p.rango || "") + "</option>").join("");
+  sel.value = elegido;
+  return PERIODOS;
+}
+
+function cambiarPeriodo(romano, yaCargada){
+  if (romano && !yaCargada) cargarTvd(romano);
+  const p = PERIODOS.find(x => x.romano === romano);
+  document.getElementById("hcPeriodoPorque").innerHTML = p
+    ? esc(p.entidad || "") : "Sin periodo la hoja no se puede verificar.";
+}
+
+/* Los periodos posibles según la caja de la que vino la carpeta. Se ofrecen como lista para
+   que la persona escoja: la caja de origen se llenó en su día con papeles de una misma
+   época, así que sus compañeras son la mejor pista cuando el expediente no trae fechas. */
+async function ofrecerCandidatos(carpeta, yaAsignado){
+  const donde = document.getElementById("hcPeriodoPorque");
+  try {
+    const r = await pedir("/expedientes/candidatos-periodo/" + encodeURIComponent(carpeta));
+    if (!r.candidatos.length) return;
+    const sel = document.getElementById("hcPeriodo");
+    if (!sel.value && r.candidatos[0]) {
+      sel.value = r.candidatos[0].romano;
+      await cargarTvd(sel.value);
+    }
+    donde.innerHTML = r.candidatos.slice(0, 3).map(c =>
+      "<div>" + (c.romano === sel.value ? "<b>" : "") + "Periodo " + esc(c.romano) +
+      (c.romano === sel.value ? "</b>" : "") + " — " + esc(c.porque) + "</div>").join("") +
+      "<div style='margin-top:4px'>Escoja el que corresponda; puede cambiarlo.</div>";
+  } catch (e) { /* la carpeta puede no estar inventariada */ }
+}
+
+/* El panel de arriba: lo que impide que la hoja avance, y lo que la plataforma resolvió sola. */
+function pintarVerificacion(r){
+  const errores = document.getElementById("hcErrores");
+  const contraste = document.getElementById("hcContraste");
+  const lista = r.errores || [];
+  errores.innerHTML = lista.length
+    ? "<div class='aviso mal'><b>Hay " + lista.length + " error" + (lista.length > 1 ? "es" : "") +
+      " que impide" + (lista.length > 1 ? "n" : "") + " que pase el flujo:</b>" +
+      "<ul style='margin:8px 0 0 18px'>" + lista.map(e => "<li>" + esc(e) + "</li>").join("") + "</ul></div>"
+    : "<div class='aviso ok'><b>Sin errores.</b> " + esc(r.mensaje || "") + "</div>";
+
+  /* Esta caja es la del contraste con el inventario, no la columna de observaciones de la
+     hoja. Allí solo van las novedades de la carpeta —rota, manchada, faltante—; lo que no
+     cuadra contra el inventario de origen se dice aquí, y queda escrito en el expediente
+     para salir después en la hoja de control y en el inventario de salida. */
+  const notas = (r.observaciones || []).filter(o => o !== r.diferencia_folios);
+  if (r.diferencia_folios) notas.unshift(r.diferencia_folios);
+  if (r.discrepancia_periodo) notas.unshift(r.discrepancia_periodo);
+  contraste.innerHTML = notas.length
+    ? "<div class='aviso info'><b>Contraste con el inventario de origen</b>" +
+      "<ul style='margin:8px 0 0 18px'>" + notas.map(o => "<li>" + esc(o) + "</li>").join("") + "</ul>" +
+      "<small>El inventario se levantó hace años: manda lo que diga el documento. Esto queda " +
+      "escrito en la bitácora del expediente.</small></div>"
+    : "";
+
+  marcarErrores(r.errores_localizados || []);
+}
+
+async function prellenarDesdeInventario(){
+  const carpeta = document.getElementById("hcCarpeta").value.trim();
+  if (!carpeta) return;
+  const poner = (id, valor) => { const c = document.getElementById(id); if (!c.value && valor) c.value = valor; };
+  try {
+    await cargarPeriodos();
+    const u = await pedir("/expedientes/inventario/"+encodeURIComponent(carpeta));
+    const selP = document.getElementById("hcPeriodo");
+    /* La lista se carga una sola vez, unas líneas más abajo y ya con la propuesta puesta. */
+    if (u.periodo) { selP.value = u.periodo; cambiarPeriodo(u.periodo, true); }
+    document.getElementById("hcCodDep").value = u.cod_serie ? "" : "";
+    /* El periodo sale de las fechas y la subserie viene propuesta de la tabla de valoración
+       de ese periodo. La persona corrige, no diligencia desde cero. */
+    const prop = u.propuesta_subserie;
+    await cargarTvd(u.periodo, prop ? prop.cod_serie : u.cod_serie,
+                    prop ? prop.cod_subserie : u.cod_subserie,
+                    u.propuesta_porque, u.propuesta_seguridad,
+                    prop ? prop.codigo_dependencia : "");
+    poner("hcNombre", u.asunto);
+    if (!u.periodo || u.requiere_persona) await ofrecerCandidatos(carpeta);
+    poner("hcResp", SESION.nombre);
+    poner("hcFecha", new Date().toISOString().slice(0,10));
+
+    /* Los folios del primer trámite se proponen con lo que declara el inventario, para no
+       escribirlos a mano. Si el expediente trae varios trámites, se reparten con Encadenar. */
+    const primera = document.querySelector("#cuerpoHc tr");
+    if (primera && u.folios) {
+      const desde = primera.querySelector(".fDesde"), hasta = primera.querySelector(".fHasta");
+      if (!desde.value) desde.value = 1;
+      if (!hasta.value) hasta.value = u.folios;
+    }
+    if (u.fecha_inicial && primera && !primera.querySelector(".fFecha").value)
+      primera.querySelector(".fFecha").value = u.fecha_inicial;
+
+    /* Nada de prosa: los datos van en las casillas. Aquí solo la referencia física, que no
+       tiene casilla propia en el formato. */
+    document.getElementById("hcDatosCaja").innerHTML =
+      "Caja de origen <b>" + esc(u.caja_origen || "—") + "</b> · el inventario declara " +
+      (u.folios != null ? u.folios : "?") + " folio(s)" +
+      (u.aviso_periodo ? " · <span style='color:var(--carmin)'>" + esc(u.aviso_periodo) + "</span>" : "");
+    document.getElementById("hcResultado").innerHTML = "";
+
+    try {
+      const f = await pedir("/expedientes/"+carpeta);
+      /* Si el modelo ya leyó el documento, manda lo que él encontró y no el asunto del
+         inventario: el nombre del expediente sale del papel. */
+      /* Campo 7, no el título ISAD(G): son cosas distintas y viven en columnas distintas. */
+  const campo7 = f.nombre_expediente || f.titulo;
+  if (campo7) document.getElementById("hcNombre").value = campo7;
+      if (f.periodo) {
+        document.getElementById("hcPeriodo").value = f.periodo;
+        if (f.cod_subserie) {
+          await cargarTvd(f.periodo, f.cod_serie, f.cod_subserie,
+                          "la escogió el modelo por el contenido que leyó", "media",
+                          f.codigo_dependencia);
+          cambiarPeriodo(f.periodo, true);
+        } else {
+          cambiarPeriodo(f.periodo);
+        }
+      }
+      mostrarEstadoDelDocumento(f);
+      if (f.tramites && f.tramites.length) {
+        document.getElementById("cuerpoHc").innerHTML = "";
+        f.tramites.forEach(t => agregarFila({ fecha:t.fecha||"", tipo:t.tipo_documental||"",
+          desde:t.folio_desde, hasta:t.folio_hasta,
+          radicado: t.no_radicado || "N/A",
+          obs:t.observaciones||"" }));
+      }
+    } catch (e) { /* aún no existe el expediente, es normal */ }
+  } catch (e) {
+    aviso("hcResultado","mal", esc(e.message));
+  }
+}
+
+/* La lista cerrada del periodo. La plataforma NO deja esta casilla sin escoger: llega ya
+   clasificada, con el porqué a la vista, y quien decide de verdad es el archivero, que
+   valida o la cambia. Esa fue la instrucción de la dirección del proyecto: clasificar es
+   trabajo de la plataforma, validar es trabajo de la persona. */
+async function cargarTvd(periodo, codSeriePropuesto, codSubseriePropuesto, porque, seguridad, depPropuesta){
+  const sel = document.getElementById("hcTvd");
+  TVD_DEL_PERIODO = [];
+  if (!periodo) {
+    sel.innerHTML = "<option value=''>Sin periodo. Escriba el periodo a la derecha y vuelva a pulsar Traer datos</option>";
+    return;
+  }
+  try {
+    TVD_DEL_PERIODO = await pedir("/expedientes/tvd/"+encodeURIComponent(periodo));
+    /* La fila de la tabla se identifica por dependencia, serie y subserie. Un periodo tiene
+       varias oficinas productoras y los códigos de serie y subserie se repiten entre ellas:
+       identificarlas solo por serie y subserie hacía desaparecer del desplegable las filas
+       repetidas —en el periodo XIV, veintiuna de setenta y cinco— y llenaba el código de
+       dependencia con el de cualquiera de ellas. */
+    let propuesta = "";
+    if (codSeriePropuesto && codSubseriePropuesto) {
+      propuesta = (depPropuesta || "")+"|"+codSeriePropuesto+"|"+codSubseriePropuesto;
+      if (!TVD_DEL_PERIODO.some(o => o.valor === propuesta)) {
+        /* Sin dependencia, o con una que no está: se toma la primera fila con esos códigos. */
+        const igual = TVD_DEL_PERIODO.find(o => o.cod_serie === codSeriePropuesto &&
+                                                o.cod_subserie === codSubseriePropuesto);
+        propuesta = igual ? igual.valor : "";
+      }
+    }
+    const existe = !!propuesta;
+    /* El renglón de arriba no es una invitación a escoger: es la salida para cuando la
+       propuesta está equivocada y hay que dejarla sin clasificar a propósito. */
+    sel.innerHTML = "<option value=''>Sin clasificar (quitar la propuesta)</option>" +
+      TVD_DEL_PERIODO.map(o => "<option value='"+esc(o.valor)+"'"+(o.valor===propuesta?" selected":"")+
+        ">"+esc(o.etiqueta)+"</option>").join("");
+    mostrarValoracion();
+    volcarClasificacion();
+    explicarPropuesta(existe ? porque : "", seguridad);
+  } catch (e) {
+    sel.innerHTML = "<option value=''>"+esc(e.message)+"</option>";
+  }
+}
+
+/* Por qué la plataforma propuso esa subserie y con cuánta seguridad. No es un error: es una
+   propuesta para validar. Solo la de seguridad baja se marca en rojo, que es la que de
+   verdad hay que mirar con calma. */
+function explicarPropuesta(porque, seguridad){
+  const caja = document.getElementById("hcPropuestaTvd");
+  if (!caja) return;
+  if (!porque) { caja.innerHTML = ""; return; }
+  const color = seguridad === "baja" ? "var(--carmin)"
+              : seguridad === "media" ? "var(--ambar, #a86400)" : "var(--verde, #1d6b3f)";
+  caja.innerHTML = "<span style='color:"+color+"'>Clasificada por la plataforma ("+
+    esc(seguridad || "propuesta")+"): "+esc(porque)+". Valídela o cámbiela en la lista.</span>";
+}
+
+/* La serie y la subserie van cada una en su casilla, con su código aparte. Una serie tiene
+   varias subseries y verlas juntas en un solo renglón se presta a confusión. Se llenan solas
+   con lo que se escoja en la lista de la tabla de valoración. */
+function volcarClasificacion(){
+  const o = TVD_DEL_PERIODO.find(x => x.valor === document.getElementById("hcTvd").value);
+  const poner = (id, v) => { const c = document.getElementById(id); if (c) c.value = v || ""; };
+  poner("hcCodDep", o && o.codigo_dependencia);
+  poner("hcDep", o && o.dependencia);
+  poner("hcCodSerie", o && o.cod_serie);
+  poner("hcSerie", o && o.serie);
+  poner("hcCodSub", o && o.cod_subserie);
+  poner("hcSub", o && o.subserie);
+}
+
+function mostrarValoracion(){
+  const o = TVD_DEL_PERIODO.find(x => x.valor === document.getElementById("hcTvd").value);
+  /* Debajo del selector, no dentro de él: la lista se quedó como estaba. Aquí se dice de
+     qué oficina productora es la fila escogida, que es lo que distingue dos renglones de la
+     tabla con los mismos códigos de serie y de subserie. */
+  document.getElementById("hcValoracion").innerHTML = o
+    ? (o.dependencia ? "Oficina productora <b>"+esc(o.dependencia)+"</b> ("+esc(o.codigo_dependencia||"—")+") · " : "")+
+      "Retención en archivo central "+(o.retencion_central_anios!=null?o.retencion_central_anios:"—")+
+      " años · disposición final "+esc(o.disposicion_final||"—")+
+      " · según la tabla de valoración convalidada, no se escribe a mano."
+    : "";
+}
+</script>
+</body>
+</html>

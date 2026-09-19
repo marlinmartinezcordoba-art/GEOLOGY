@@ -1,0 +1,2 @@
+# Solo para desarrollo y pruebas. No se instala en el servidor.
+pytest==8.3.4

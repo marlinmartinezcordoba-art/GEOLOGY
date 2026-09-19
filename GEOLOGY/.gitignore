@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+deposito/*
+!deposito/.gitkeep
+expedidos/*
+!expedidos/.gitkeep
+datos/equipo.csv

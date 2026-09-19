@@ -1,0 +1,122 @@
+# GEOLOGY · Plataforma de organización y descripción documental del fondo acumulado
+# Contrato 733 de 2026 · Servicio Geológico Colombiano · Hometic SAS
+#
+# Cuatro servicios:
+#   almacen_datos   PostgreSQL 15   base de datos única del sistema
+#   mensajeria      Redis 7         intermediario de mensajes para los trabajos en segundo plano
+#   servidor        FastAPI 3.11    servidor web que atiende la interfaz
+#   procesador      Celery          ejecuta las lecturas, la recepción técnica y los instrumentos
+#
+# Arranque:  docker compose up -d --build
+# Apagado:   docker compose down          (agregue -v para borrar también los datos)
+
+name: geology
+
+services:
+
+  almacen_datos:
+    image: postgres:15
+    container_name: geology_almacen_datos
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USUARIO:-geology}
+      POSTGRES_PASSWORD: ${PG_CLAVE:-geology}
+      POSTGRES_DB: ${PG_BASE:-geology}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+    volumes:
+      - geology_pgdata:/var/lib/postgresql/data
+    ports:
+      - "${PG_PUERTO:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USUARIO:-geology} -d ${PG_BASE:-geology}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  mensajeria:
+    image: redis:7-alpine
+    container_name: geology_mensajeria
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - geology_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  servidor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: geology_servidor
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${PG_USUARIO:-geology}:${PG_CLAVE:-geology}@almacen_datos:5432/${PG_BASE:-geology}
+      CELERY_BROKER_URL: redis://mensajeria:6379/0
+      CELERY_RESULT_BACKEND: redis://mensajeria:6379/1
+      PYTHONPATH: /srv/geology
+    command: >
+      uvicorn geology.main:aplicacion --host 0.0.0.0 --port 8080
+    volumes:
+      - ./geology:/srv/geology/geology
+      - ./scripts:/srv/geology/scripts
+      - ./datos:/srv/geology/datos
+      - ./deposito:/srv/geology/deposito
+      # Instrumentos expedidos (FUID, hojas de control, rótulos): visibles desde el equipo
+      # anfitrión en la carpeta «expedidos» sin sacarlos del contenedor.
+      - ./expedidos:/srv/geology/expedidos
+      - ./.env:/srv/geology/.env
+      - ./conftest.py:/srv/geology/conftest.py
+    ports:
+      - "${PUERTO_WEB:-8080}:8080"
+    depends_on:
+      almacen_datos:
+        condition: service_healthy
+      mensajeria:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/estado')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  procesador:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: geology_procesador
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${PG_USUARIO:-geology}:${PG_CLAVE:-geology}@almacen_datos:5432/${PG_BASE:-geology}
+      CELERY_BROKER_URL: redis://mensajeria:6379/0
+      CELERY_RESULT_BACKEND: redis://mensajeria:6379/1
+      PYTHONPATH: /srv/geology
+    command: >
+      celery -A geology.nucleo.cola.celery_app worker
+      --loglevel=info --concurrency=${TRABAJADORES_EN_PARALELO:-6} -Q ${GEOLOGY_COLA:-geology}
+    volumes:
+      # El procesador tiene que ver EXACTAMENTE las mismas carpetas que el servidor: si le
+      # falta el depósito, la interfaz guarda el expediente y el procesador busca en uno vacío.
+      - ./geology:/srv/geology/geology
+      - ./deposito:/srv/geology/deposito
+      - ./datos:/srv/geology/datos
+      - ./scripts:/srv/geology/scripts
+      - ./expedidos:/srv/geology/expedidos
+      - ./.env:/srv/geology/.env
+    depends_on:
+      almacen_datos:
+        condition: service_healthy
+      mensajeria:
+        condition: service_healthy
+
+volumes:
+  geology_pgdata:
+  geology_redisdata:

@@ -1,0 +1,33 @@
+# Secretos y configuración local. Nunca se versionan: contienen llaves.
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Documentos digitalizados e instrumentos expedidos. Son datos del contrato,
+# no código: se respaldan aparte (pg_dump + copia del depósito).
+deposito/*
+!deposito/.gitkeep
+expedidos/*
+!expedidos/.gitkeep
+
+# Equipo del contrato: nombres y correos reales.
+datos/equipo.csv
+
+# Volcados de Redis y respaldos de la base.
+dump.rdb
+*.sql
+*.tgz
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
