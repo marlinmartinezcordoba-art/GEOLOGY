@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/*
+ * SISTEMA DE DISEÑO — ARCA
+ * Reutiliza el sistema de diseño de Kustos SGDEA (panel de gestión estilo RICORA): misma paleta,
+ * componentes y movimiento, para que el equipo trabaje con una sola gramática visual.
+ * - Azul institucional oscuro #17324D: barra lateral, títulos, identidad.
+ * - Azul principal #2563A6: botones principales y enlaces.
+ * - Turquesa tecnológico #0F8B8D: IA, automatización e indicadores.
+ *   Regla: la IA propone → el profesional valida → ARCA registra. Lo que propone la IA se ve turquesa
+ *   y muestra su confianza; lo que decide una persona o una regla archivística, no.
+ * - Estados: éxito #16A34A, advertencia #D97706, error #DC2626. Siempre con texto o icono.
+ * Única fuente de colores: los componentes no usan colores sueltos.
+ */
+
+@theme {
+  --color-*: initial;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-transparent: transparent;
+
+  /* Superficies y texto */
+  --color-canvas: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef2f6;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-texto: #243447;
+  --color-texto-2: #3e4f63;
+  --color-texto-3: #5c6b80; /* 4,8:1 o más sobre surface, canvas y surface-muted (WCAG 2.1 AA) */
+
+  /* Identidad: azul institucional oscuro (barra lateral y títulos) */
+  --color-titulo: #17324d;
+  --color-profundo: #17324d;
+  --color-profundo-2: #1f4062;
+  --color-profundo-3: #2a5078;
+  --color-profundo-texto: #b4c6d9;
+
+  /* Azul principal: botones principales y enlaces */
+  --color-marca: #2563a6;
+  --color-marca-hover: #1d4f86;
+  --color-marca-suave: #eaf1f9;
+  --color-marca-borde: #bcd1ea;
+
+  /* Turquesa tecnológico: automatización e indicadores */
+  --color-motor: #0b6f71;
+  --color-motor-vivo: #0f8b8d;
+  --color-motor-suave: #e5f4f4;
+  --color-motor-borde: #9fd3d4;
+  --color-sobre-acento: #ffffff;
+
+  /* IA: mismo turquesa, con nombre propio para que el código diga qué es asistido por IA */
+  --color-ia: #0b6f71;
+  --color-ia-vivo: #0f8b8d;
+  --color-ia-suave: #e5f4f4;
+  --color-ia-borde: #9fd3d4;
+
+  /* Estados (texto oscuro sobre fondo suave: contraste AA) */
+  --color-ok: #147a3a; /* 4,8:1 sobre ok-suave (WCAG 2.1 AA) */
+  --color-ok-vivo: #16a34a;
+  --color-ok-suave: #e8f6ed;
+  --color-aviso: #a35a05;
+  --color-aviso-vivo: #d97706;
+  --color-aviso-suave: #fdf3e2;
+  --color-critico: #b91c1c;
+  --color-critico-vivo: #dc2626;
+  --color-critico-suave: #fdecec;
+  --color-naranja: #9a4a12;
+  --color-naranja-vivo: #ea7a2e;
+  --color-naranja-suave: #fdf0e6;
+  --color-info: #1d4f86;
+  --color-info-vivo: #2563a6;
+  --color-info-suave: #eaf1f9;
+  --color-neutro: #55657a;
+  --color-neutro-suave: #eef2f6;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "Cascadia Mono", monospace;
+  /* Lema institucional: voz propia de la entidad, distinta de la tipografía del sistema */
+  --font-serif: var(--font-serif), "Source Serif 4", Georgia, serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  --shadow-xs: 0 1px 2px rgb(23 50 77 / 0.04);
+  --shadow-sm: 0 1px 3px rgb(23 50 77 / 0.06), 0 1px 2px rgb(23 50 77 / 0.03);
+  --shadow-md: 0 8px 20px -8px rgb(23 50 77 / 0.12), 0 2px 4px rgb(23 50 77 / 0.03);
+  --shadow-lg: 0 20px 44px -14px rgb(23 50 77 / 0.22);
+
+  --animate-aparecer: aparecer 160ms ease-out;
+  --animate-subir: subir 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-desde-derecha: desde-derecha 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes aparecer {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes subir {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes desde-derecha {
+    from { opacity: 0.4; transform: translateX(32px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-texto);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  ::selection {
+    background: var(--color-marca-borde);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-marca);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  dialog::backdrop {
+    background: rgb(23 50 77 / 0.45);
+    backdrop-filter: blur(2px);
+  }
+  /* Iconografía lineal y consistente en toda la aplicación */
+  svg.lucide {
+    stroke-width: 1.75;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* Variables de las fuentes empaquetadas (antes las ponía next/font en <html>). */
+.fuentes {
+  --font-inter: "Inter Variable";
+  --font-jetbrains: "JetBrains Mono";
+  --font-serif: "Source Serif 4";
+}
