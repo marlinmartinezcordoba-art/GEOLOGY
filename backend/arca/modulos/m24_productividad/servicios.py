@@ -130,7 +130,7 @@ def _validar(tabla: str, v: dict[str, Any], cat: _Catalogo) -> None:
             raise ValueError("la cantidad no puede ser negativa")
     if tabla == "dMetas" and cat.actividades and v["actividad"] not in cat.actividades:
         raise ValueError(f"la actividad «{v['actividad']}» no está configurada")
-    if tabla == "dActividades" and v.get("fuente_automatica") and v["fuente_automatica"] not in diseno.FUENTES_AUTOMATICAS:
+    if tabla == "dActividades" and v.get("fuente_automatica") and v["fuente_automatica"] not in diseno.FUENTES_AUTOMATICAS and not re.fullmatch(r"alistamiento\.[a-z0-9_]+(\.cantidad)?", v["fuente_automatica"]):
         raise ValueError(f"fuente automática desconocida: {v['fuente_automatica']}")
     if tabla == "fCalidad" and v["resultado"] not in diseno.RESULTADOS_CALIDAD:
         raise ValueError(f"resultado «{v['resultado']}» no válido ({', '.join(diseno.RESULTADOS_CALIDAD)})")
@@ -281,6 +281,10 @@ def produccion_automatica(ctx, proyecto: Proyecto) -> list[dict[str, Any]]:
     for a in actividades:
         if a.fuente_automatica == "expedientes_inventariados":
             eventos = [(u.creado_en, 1) for u in ctx.db.scalars(select(UnidadDocumental).where(UnidadDocumental.proyecto_id == proyecto.id))]
+        elif a.fuente_automatica.startswith("alistamiento."):
+            from arca.modulos.alistamiento import servicios as alistamiento  # noqa: PLC0415
+
+            eventos = alistamiento.eventos_productividad(ctx, proyecto, a.fuente_automatica)
         elif a.fuente_automatica in ("paginas_ocr", "hojas_verificadas", "folios_verificados", "documentos_hoja", "descripciones_aprobadas"):
             eventos = _eventos_automaticos(ctx, proyecto, a.fuente_automatica)
         else:

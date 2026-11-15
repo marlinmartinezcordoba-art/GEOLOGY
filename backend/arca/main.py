@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from arca.modulos.alistamiento.rutas import rutas as alistamiento
 from arca.modulos.descripcion.rutas import rutas as descripcion
 from arca.modulos.disposicion.rutas import rutas as disposicion
 from arca.modulos.entrega.rutas import rutas as entrega
@@ -75,7 +76,7 @@ def crear_app() -> FastAPI:
 
     registrar_manejadores(app)
     app.include_router(operacion)
-    for router in (auth, plataforma, organizacion, usuarios, roles, configuracion, proyectos, instrumentos, clasificacion, transferencias, disposicion, hojas_control, historias, ocr, procesos, descripcion, consulta, flujo, inventario, digitalizacion, inspeccion, plantillas, expedicion, entrega, productividad, powerbi, auditoria):
+    for router in (auth, plataforma, organizacion, usuarios, roles, configuracion, proyectos, instrumentos, clasificacion, transferencias, disposicion, alistamiento, hojas_control, historias, ocr, procesos, descripcion, consulta, flujo, inventario, digitalizacion, inspeccion, plantillas, expedicion, entrega, productividad, powerbi, auditoria):
         app.include_router(router, prefix="/api/v1")
     return app
 

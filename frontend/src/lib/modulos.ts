@@ -32,6 +32,7 @@ export const RECORRIDO: { codigo: string; nombre: string; etapa: string; listo: 
   { codigo: "M23", nombre: "Consulta: búsqueda en metadatos, OCR, hoja y descripción, con acceso según la TRD", etapa: "Etapa 5", listo: true },
   { codigo: "Flujo", nombre: "Flujo automático: al cargar, calidad, OCR, hoja de control y descripción propuestos sin intervención", etapa: "Incremento 2", listo: true },
   { codigo: "Entrega", nombre: "Paquete de entrega digital por expediente (PDF/A-2b validado, metadatos y huellas) para el SGDEA", etapa: "Incremento 2", listo: true },
+  { codigo: "D-44", nombre: "Alistamiento físico por expediente: depuración, ordenación, foliación, material abrasivo, carpeta y rotulación, por caja o expediente", etapa: "Incremento 2", listo: true },
   { codigo: "D-43", nombre: "Historias laborales: titular del FUID y del OCR, documentos de otra persona, tipos mínimos y duplicados", etapa: "Incremento 2", listo: true },
   { codigo: "D-42", nombre: "Inspección de calidad por lote: muestreo con semilla, defectos por severidad y aceptación según el plan", etapa: "Incremento 2", listo: true },
   { codigo: "ARC-18", nombre: "FUID de salida y rótulos con plantillas versionadas", etapa: "Incremento 2", listo: true },

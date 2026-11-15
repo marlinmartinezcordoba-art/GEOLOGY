@@ -36,6 +36,7 @@ from arca.modelos import (
     EstadoProyecto,
     HojaControl,
     Instrumento,
+    IntervencionExpediente,
     PaqueteEntrega,
     Proyecto,
     RecursoDigital,
@@ -46,6 +47,7 @@ from arca.modelos import (
 )
 from arca.modelos.base import ahora_utc
 from arca.modelos.transferencias import FASES
+from arca.modulos.alistamiento import servicios as alistamiento
 from arca.modulos.entrega import pdfa
 from arca.modulos.historias import servicios as historias
 from arca.modulos.inspeccion import servicios as inspeccion
@@ -76,6 +78,8 @@ def _seleccion(ctx, proyecto: Proyecto, cajas: list[str], lote: str, solo_listos
     hojas = dict(ctx.db.execute(select(HojaControl.unidad_id, HojaControl.estado).where(HojaControl.proyecto_id == proyecto.id)).all())
     descs = dict(ctx.db.execute(select(DescripcionUnidad.unidad_id, DescripcionUnidad.estado).where(DescripcionUnidad.proyecto_id == proyecto.id)).all())
     con_imagenes = set(ctx.db.scalars(select(RecursoDigital.unidad_id).where(RecursoDigital.proyecto_id == proyecto.id, RecursoDigital.unidad_id.is_not(None))))
+    plan_alistamiento = alistamiento.plan_de(ctx, proyecto)
+    exigir_alistamiento = bool(plan_alistamiento and plan_alistamiento.exigir_para_entrega)
     plan = inspeccion.plan_de(ctx, proyecto)
     inspeccionados = inspeccion.estado_lotes(ctx, proyecto) if plan and plan.exigir_para_entrega else None
     entran, fuera = [], []
@@ -89,6 +93,9 @@ def _seleccion(ctx, proyecto: Proyecto, cajas: list[str], lote: str, solo_listos
             if ultima is None or ultima.estado != "aceptada":
                 fuera.append((u.identificador, f"el lote «{lote_u or 'sin lote'}» " + ("fue rechazado en la inspección de calidad" if ultima else "no ha pasado la inspección de calidad")))
                 continue
+        if solo_listos and exigir_alistamiento and (faltan := alistamiento.pendientes_de(ctx, proyecto, u, plan_alistamiento)):
+            fuera.append((u.identificador, f"falta el alistamiento: {', '.join(faltan)}"))
+            continue
         pr = procesos_de(ctx, proyecto, u, confs, mapa)
         if solo_listos and pr["hoja_control"] and hojas.get(u.id) != "verificada":
             fuera.append((u.identificador, "la hoja de control no está verificada"))
@@ -153,6 +160,8 @@ def _metadatos(ctx, proyecto: Proyecto, u: UnidadDocumental, pags: list[dict[str
                    "fase": FASES.get(u.fase, u.fase), "disposicion_aplicada": u.disposicion_aplicada, "lote": caja.lote if caja else ""},
         "clasificacion": clas,
         "titular": historias.como_dict(historias.titular_de(ctx, u)),
+        "alistamiento": [{"actividad": i.actividad, "cantidad": i.cantidad, "observacion": i.observacion, "hecho_en": i.hecho_en.isoformat()}
+                         for i in ctx.db.scalars(select(IntervencionExpediente).where(IntervencionExpediente.unidad_id == u.id).order_by(IntervencionExpediente.hecho_en))],
         "hoja_control": None if not h else {"total_folios": h.total_folios, "imagenes_por_folio": h.imagenes_por_folio, "verificada_en": h.verificada_en.isoformat() if h.verificada_en else None, "documentos": tramites},
         "descripcion_isadg": d.campos if d else None,
         "digitalizacion": {"paginas": len(pags), "originales": originales},

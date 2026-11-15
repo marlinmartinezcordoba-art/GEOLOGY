@@ -1,3 +1,4 @@
+from arca.modelos.alistamiento import IntervencionExpediente, PlanAlistamiento
 from arca.modelos.auditoria import CadenaAuditoria, EventoAuditoria, SelloAuditoria
 from arca.modelos.base import Base
 from arca.modelos.captura import ArchivoDigital, EstadoLote, EstadoRecurso, FilaInventario, LoteInventario, RecursoDigital, UnidadDocumental
@@ -47,6 +48,8 @@ __all__ = [
     "InspeccionLote",
     "ItemInspeccion",
     "PlanMuestreo",
+    "IntervencionExpediente",
+    "PlanAlistamiento",
     "ConfigHistorias",
     "TitularExpediente",
     "Trabajo",

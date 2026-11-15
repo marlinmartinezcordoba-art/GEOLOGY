@@ -499,6 +499,9 @@ def validar(ctx, h: HojaControl) -> dict[str, Any]:
     from arca.modulos.historias import servicios as historias  # noqa: PLC0415 — solo lee el titular y la configuración
 
     avisos.extend(historias.avisos_hoja(ctx, u))
+    from arca.modulos.alistamiento import servicios as alistamiento  # noqa: PLC0415
+
+    avisos.extend(alistamiento.avisos_hoja(ctx, u, r.total_folios))
     pendientes_qc = sum(1 for p in lista_paginas if p["estado"] != EstadoRecurso.APROBADO.value)
     if pendientes_qc:
         avisos.append(f"{pendientes_qc} páginas aún no están aprobadas en el control de calidad de la digitalización")

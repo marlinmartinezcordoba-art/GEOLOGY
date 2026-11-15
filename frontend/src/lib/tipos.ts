@@ -360,3 +360,14 @@ export type ExpedienteHistoria = {
   completitud: { obligatorios: number; presentes: number; faltan: string[]; hoja: string | null }; documentos_encontrados: { numero: string; paginas: number[] }[];
   paginas_leidas: number; alertas: { clase: string; paginas: number[]; mensaje: string }[];
 };
+
+export type ActividadAlistamiento = { codigo: string; nombre: string; cantidad: "ninguna" | "folios" | "unidades"; obligatoria: boolean };
+export type PlanAlistamientoVista = { vigente: boolean; actividades: ActividadAlistamiento[]; exigir_para_entrega: boolean; version?: number; motivo?: string; aviso?: string };
+export type AvanceAlistamiento = {
+  actividades: ActividadAlistamiento[]; resumen: { expedientes: number; completos: number; por_actividad: Record<string, number> };
+  cajas: { caja: string; expedientes: number; hechas: Record<string, number>; completos: number }[];
+};
+export type ExpedienteAlistamiento = {
+  unidad_id: string; identificador: string; nombre: string; carpeta: string | null; folios_fuid: number | null;
+  hechas: Record<string, { cantidad: number | null; observacion: string; hecho_en: string; hecho_por: string | null }>;
+};
