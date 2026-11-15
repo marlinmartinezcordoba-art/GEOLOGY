@@ -68,10 +68,10 @@ export default function Plataforma() {
       {nueva && (
         <ModalOrganizacion
           alCerrar={() => setNueva(false)}
-          alGuardar={(correo, clave) => {
+          alGuardar={(correo, clave, enviada) => {
             setNueva(false);
             setTemporal(clave ? { correo, clave } : null);
-            avisos.exito(clave ? "Organización creada. Entréguele al administrador su contraseña temporal." : "Organización creada. El administrador ya tenía cuenta en ARCA.");
+            avisos.exito(clave ? "Organización creada. Entréguele al administrador su contraseña temporal." : enviada ? "Organización creada. Al administrador se le envió la contraseña temporal por correo." : "Organización creada. El administrador ya tenía cuenta en ARCA.");
             void orgs.recargar();
           }}
         />
@@ -105,7 +105,7 @@ function Limites({ usuarios, proyectos, alCambiar }: { usuarios: string; proyect
 
 const aLimites = (u: string, p: string) => Object.fromEntries([["usuarios", u], ["proyectos", p]].filter(([, v]) => v.trim()).map(([k, v]) => [k, Number(v)]));
 
-function ModalOrganizacion({ alCerrar, alGuardar }: { alCerrar: () => void; alGuardar: (correo: string, clave: string | null) => void }) {
+function ModalOrganizacion({ alCerrar, alGuardar }: { alCerrar: () => void; alGuardar: (correo: string, clave: string | null, enviada: boolean) => void }) {
   const [d, setD] = useState({ nombre: "", razon_social: "", identificacion: "", correo: "", nombre_admin: "" });
   const [lim, setLim] = useState({ u: "", p: "" });
   const [error, setError] = useState<string | null>(null);
@@ -129,12 +129,12 @@ function ModalOrganizacion({ alCerrar, alGuardar }: { alCerrar: () => void; alGu
               setEnviando(true);
               setError(null);
               try {
-                const r = await api<{ administrador_correo: string; clave_temporal: string | null }>("/plataforma/organizaciones", {
+                const r = await api<{ administrador_correo: string; clave_temporal: string | null; enviada_por_correo?: boolean }>("/plataforma/organizaciones", {
                   metodo: "POST",
                   sinOrganizacion: true,
                   cuerpo: { nombre: d.nombre, razon_social: d.razon_social, identificacion: d.identificacion, limites: aLimites(lim.u, lim.p), administrador: { correo: d.correo, nombre_completo: d.nombre_admin } },
                 });
-                alGuardar(r.administrador_correo, r.clave_temporal);
+                alGuardar(r.administrador_correo, r.clave_temporal, !!r.enviada_por_correo);
               } catch (e) {
                 setError((e as Error).message);
                 setEnviando(false);

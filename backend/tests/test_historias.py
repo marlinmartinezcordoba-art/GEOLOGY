@@ -170,3 +170,21 @@ def test_fuid_con_titular_lista_de_chequeo_y_acceso_restringido(cliente, org_a):
     assert cliente.get(imagen, headers=consulta).status_code == 200
     fila = next(f for f in cliente.get("/api/v1/consulta/buscar", params={"q": "79555111"}, headers=consulta).json()["filas"] if f["identificador"] == "HL-2")
     assert fila["contenido_visible"]
+
+
+def test_retencion_desde_el_retiro(cliente, org_a):
+    """Artículo 9.5.5: la retención en gestión de una historia laboral se cuenta desde la desvinculación."""
+    p, base, director, u = _proyecto(cliente, org_a)
+    hl = f"{base}/historias"
+    cliente.put(f"{hl}/config", json=CONFIG, headers=director)
+    cliente.post(f"{hl}/expedientes/proponer", headers=org_a.admin)
+    cliente.put(f"{hl}/expedientes/{u['HL-1']}/titular", json={"fecha_vinculacion": "2015-01-15", "fecha_retiro": "2025-06-30"}, headers=org_a.admin)
+    cliente.put(f"{hl}/expedientes/{u['HL-2']}/titular", json={"cargo": "Técnico ficticio"}, headers=org_a.admin)  # sigue vinculada
+    cla = f"{base}/clasificacion"
+    filas = {f["unidad"]["identificador"]: f for f in cliente.get(cla, params={"limite": 500}, headers=org_a.admin).json()["filas"]}
+    cal1, cal2, cal3 = (filas[x]["clasificacion"]["calendario"] for x in ("HL-1", "HL-2", "HL-3"))
+    assert cal1["fin_gestion"] == "2027-06-30" and cal1["base"] == "retiro" and "contado desde el retiro" in cal1["nota"]  # 2 años desde el retiro
+    assert cal2["fin_gestion"] is None and "sigue vinculada" in cal2["nota"]
+    assert cal3["fin_gestion"] == "2024-12-31" and cal3["base"] == "fecha_final"  # sin titular confirmado: como cualquier unidad
+    plan = cliente.get(f"{base}/transferencias/plan", params={"corte": "2026-11-15"}, headers=org_a.admin).json()["tipos"]["primaria"]
+    assert plan["elegibles"] == 2 and plan["anticipables"] == 1 and plan["sin_calendario"] == 1  # HL-3 y HL-4 · HL-1 · HL-2

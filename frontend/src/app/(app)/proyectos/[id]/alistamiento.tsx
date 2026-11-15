@@ -1,17 +1,17 @@
 "use client";
 
-import { Check, ChevronDown, ChevronRight, ClipboardList, Plus, Save, Trash2, Undo2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ClipboardList, Plus, Save, Stethoscope, Trash2, Undo2 } from "lucide-react";
 import { Fragment, useState } from "react";
 
 import { ModalMotivo } from "@/components/ui/acciones";
 import { useAvisos } from "@/components/ui/avisos";
 import { Boton, Cargando, Insignia, Modal, Nota, Tabla, Vacio } from "@/components/ui/basicos";
-import { Campo, Casilla, Entrada, Selector } from "@/components/ui/campos";
+import { Area, Campo, Casilla, Entrada, Selector } from "@/components/ui/campos";
 import { api } from "@/lib/api";
 import { fechaHora, numero } from "@/lib/formato";
 import { PERMISOS } from "@/lib/permisos";
 import { useSesion } from "@/lib/sesion";
-import type { ActividadAlistamiento, AvanceAlistamiento, ExpedienteAlistamiento, PlanAlistamientoVista, Proyecto } from "@/lib/tipos";
+import type { ActividadAlistamiento, AvanceAlistamiento, DiagnosticoConservacion, ExpedienteAlistamiento, PlanAlistamientoVista, Proyecto } from "@/lib/tipos";
 import { useDatos } from "@/lib/use-datos";
 
 /** Alistamiento físico por expediente: actividades del proyecto, avance por caja y registro por caja o expediente. */
@@ -35,6 +35,7 @@ export function Alistamiento({ proyecto }: { proyecto: Proyecto }) {
       {plan.datos?.vigente && a && (
         <>
           <p className="text-[13px] text-texto-2"><b>{numero(a.resumen.completos)}</b> de <b>{numero(a.resumen.expedientes)}</b> expedientes con el alistamiento obligatorio completo · {a.actividades.map((x) => `${x.nombre}: ${numero(a.resumen.por_actividad[x.codigo] ?? 0)}`).join(" · ")}</p>
+          <p className="text-[13px] text-texto-2">Diagnóstico de conservación: <b>{numero(a.resumen.diagnostico.registrados)}</b> registrados · bueno {numero(a.resumen.diagnostico.bueno)} · regular {numero(a.resumen.diagnostico.regular)} · malo {numero(a.resumen.diagnostico.malo)}{a.resumen.diagnostico.aislar ? <span className="font-semibold text-critico"> · {numero(a.resumen.diagnostico.aislar)} por aislar (deterioro biológico)</span> : null}</p>
           {!a.cajas.length ? <Vacio icono={<ClipboardList />} titulo="El proyecto no tiene expedientes en el inventario" /> : (
             <Tabla className="rounded-xl border border-line">
               <thead><tr><th>Caja</th><th>Expedientes</th>{a.actividades.map((x) => <th key={x.codigo}>{x.nombre}</th>)}<th>Completos</th><th /></tr></thead>
@@ -69,15 +70,21 @@ export function Alistamiento({ proyecto }: { proyecto: Proyecto }) {
 function ExpedientesCaja({ base, caja, actividades, opera, alCambiar }: { base: string; caja: string; actividades: ActividadAlistamiento[]; opera: boolean; alCambiar: () => void }) {
   const lista = useDatos(() => api<ExpedienteAlistamiento[]>(`${base}/expedientes`, { consulta: { caja } }), [base, caja]);
   const [deshaciendo, setDeshaciendo] = useState<{ unidad: string; actividad: string; nombre: string } | null>(null);
+  const [diagnosticando, setDiagnosticando] = useState<ExpedienteAlistamiento | null>(null);
   if (!lista.datos) return <Cargando />;
   return (
     <div className="py-1">
       <table className="w-full text-[12.5px]">
-        <thead><tr className="text-left text-texto-3"><th className="py-1 pr-3">Expediente</th>{actividades.map((x) => <th key={x.codigo} className="py-1 pr-3">{x.nombre}</th>)}</tr></thead>
+        <thead><tr className="text-left text-texto-3"><th className="py-1 pr-3">Expediente</th><th className="py-1 pr-3">Conservación</th>{actividades.map((x) => <th key={x.codigo} className="py-1 pr-3">{x.nombre}</th>)}</tr></thead>
         <tbody>
           {lista.datos.map((e) => (
             <tr key={e.unidad_id} className="border-t border-line">
               <td className="py-1.5 pr-3"><span className="font-semibold">{e.identificador}</span> <span className="text-texto-3">{e.nombre}</span></td>
+              <td className="py-1.5 pr-3">
+                <button className="inline-flex items-center gap-1 hover:underline" disabled={!opera} onClick={() => setDiagnosticando(e)} title={e.diagnostico ? [...e.diagnostico.nombres, e.diagnostico.observacion].filter(Boolean).join(" · ") : "Registrar el diagnóstico"}>
+                  {e.diagnostico ? <Insignia tono={e.diagnostico.aislar ? "critico" : e.diagnostico.estado === "bueno" ? "ok" : e.diagnostico.estado === "regular" ? "aviso" : "critico"}>{e.diagnostico.estado}{e.diagnostico.aislar ? " · aislar" : ""}</Insignia> : opera ? <span className="inline-flex items-center gap-1 text-marca"><Stethoscope className="size-3.5" />Diagnosticar</span> : <span className="text-texto-3">—</span>}
+                </button>
+              </td>
               {actividades.map((x) => {
                 const h = e.hechas[x.codigo];
                 return (
@@ -92,6 +99,7 @@ function ExpedientesCaja({ base, caja, actividades, opera, alCambiar }: { base: 
           ))}
         </tbody>
       </table>
+      {diagnosticando && <ModalDiagnostico base={base} expediente={diagnosticando} alCerrar={() => setDiagnosticando(null)} alGuardar={() => (setDiagnosticando(null), lista.recargar(), alCambiar())} />}
       <ModalMotivo abierto={!!deshaciendo} titulo={`Deshacer: ${deshaciendo?.nombre ?? ""}`} descripcion="Queda en la auditoría con el motivo." boton="Deshacer" peligro
         alCerrar={() => setDeshaciendo(null)}
         alConfirmar={async (motivo) => { if (!deshaciendo) return; await api(`${base}/expedientes/${deshaciendo.unidad}/${deshaciendo.actividad}/deshacer`, { metodo: "POST", cuerpo: { motivo } }); setDeshaciendo(null); lista.recargar(); alCambiar(); }} />
@@ -210,5 +218,52 @@ function PlanCard({ base, vista, alGuardar }: { base: string; vista: PlanAlistam
         </div>
       )}
     </div>
+  );
+}
+
+function ModalDiagnostico({ base, expediente, alCerrar, alGuardar }: { base: string; expediente: ExpedienteAlistamiento; alCerrar: () => void; alGuardar: () => void }) {
+  const avisos = useAvisos();
+  const catalogo = useDatos(() => api<{ estados: Record<string, string>; hallazgos: Record<string, { nombre: string; aislar: boolean }> }>(`${base}/diagnostico/catalogo`), [base]);
+  const d = expediente.diagnostico;
+  const [estado, setEstado] = useState<DiagnosticoConservacion["estado"]>(d?.estado ?? "bueno");
+  const [hallazgos, setHallazgos] = useState<string[]>(d?.hallazgos ?? []);
+  const [folios, setFolios] = useState(d?.folios_afectados?.toString() ?? "");
+  const [observacion, setObservacion] = useState(d?.observacion ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      await api(`${base}/expedientes/${expediente.unidad_id}/diagnostico`, { metodo: "PUT", cuerpo: { estado, hallazgos: estado === "bueno" ? [] : hallazgos, folios_afectados: folios ? Number(folios) : null, observacion } });
+      avisos.exito(`Diagnóstico de ${expediente.identificador} registrado.`);
+      alGuardar();
+    } catch (err) {
+      avisos.error((err as Error).message);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal abierto titulo={`Diagnóstico de conservación · ${expediente.identificador}`} descripcion={expediente.nombre} alCerrar={alCerrar} ancho="lg"
+      pie={<><Boton variante="fantasma" onClick={alCerrar}>Cancelar</Boton><Boton variante="primario" icono={<Stethoscope />} cargando={guardando} onClick={guardar}>Registrar</Boton></>}>
+      {!catalogo.datos ? <Cargando /> : (
+        <div className="flex flex-col gap-3">
+          <Campo etiqueta="Estado general">
+            <Selector value={estado} onChange={(e) => setEstado(e.target.value as DiagnosticoConservacion["estado"])}>{Object.entries(catalogo.datos.estados).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Selector>
+          </Campo>
+          {estado !== "bueno" && (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {Object.entries(catalogo.datos.hallazgos).map(([k, v]) => (
+                <Casilla key={k} etiqueta={<span>{v.nombre}{v.aislar && <span className="text-critico"> · aislar</span>}</span>} checked={hallazgos.includes(k)}
+                  onChange={(e) => setHallazgos(e.target.checked ? [...hallazgos, k] : hallazgos.filter((x) => x !== k))} />
+              ))}
+            </div>
+          )}
+          <Campo etiqueta="Folios afectados" className="w-40"><Entrada type="number" min={0} value={folios} onChange={(e) => setFolios(e.target.value)} /></Campo>
+          <Campo etiqueta="Observación"><Area className="min-h-16" value={observacion} onChange={(e) => setObservacion(e.target.value)} placeholder="Qué se encontró y dónde" /></Campo>
+        </div>
+      )}
+    </Modal>
   );
 }

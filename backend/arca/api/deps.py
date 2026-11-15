@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from arca.modelos import Membresia, Organizacion, Usuario
 from arca.nucleo.bd import obtener_sesion
-from arca.nucleo.permisos import PRIVILEGIADOS, Permiso
+from arca.nucleo.permisos import Permiso
 from arca.nucleo.seguridad import TIPO_ACCESO, leer_token
 
 Sesion = Annotated[Session, Depends(obtener_sesion)]
@@ -151,11 +151,11 @@ def obtener_contexto(db: Sesion, usuario: UsuarioActual, origen: Origen, x_organ
         membresia = vigentes[0]
     else:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pertenece a varias organizaciones: indique cuál en la cabecera X-Organizacion")
-    if not usuario.mfa_activo and PRIVILEGIADOS & set(membresia.rol.permisos):
-        from arca.modulos.m03_configuracion.servicios import valor_vigente  # noqa: PLC0415
+    if not usuario.mfa_activo:
+        from arca.modulos.m03_configuracion.servicios import mfa_exigido  # noqa: PLC0415
 
-        if valor_vigente(db, membresia.tenant_id, "seguridad.mfa_privilegiados", por_defecto=False) is True:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Su rol exige verificación en dos pasos. Actívela en /auth/mfa/iniciar.")
+        if mfa_exigido(db, membresia):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Su organización exige verificación en dos pasos para su rol: actívela en «Mi cuenta» para continuar.")
     return Contexto(db=db, usuario=usuario, organizacion=membresia.organizacion, membresia=membresia, origen=origen)
 
 

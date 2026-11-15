@@ -40,3 +40,19 @@ class IntervencionExpediente(IdMixin, TenantMixin, Base):
     observacion: Mapped[str] = mapped_column(Text, default="")
     hecho_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     hecho_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id", ondelete="RESTRICT"))
+
+
+class DiagnosticoExpediente(IdMixin, TenantMixin, Base):
+    """Diagnóstico de conservación de un expediente: estado general y hallazgos, al recibirlo para el alistamiento."""
+
+    __tablename__ = "diagnosticos_expediente"
+    __table_args__ = (UniqueConstraint("unidad_id"),)
+
+    proyecto_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("proyectos.id", ondelete="RESTRICT"), index=True)
+    unidad_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("unidades_documentales.id", ondelete="RESTRICT"), index=True)
+    estado: Mapped[str] = mapped_column(String(20))  # bueno | regular | malo
+    hallazgos: Mapped[list] = mapped_column(Json, default=list)  # códigos del catálogo
+    folios_afectados: Mapped[int | None] = mapped_column(Integer)
+    observacion: Mapped[str] = mapped_column(Text, default="")
+    registrado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    registrado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id", ondelete="RESTRICT"))

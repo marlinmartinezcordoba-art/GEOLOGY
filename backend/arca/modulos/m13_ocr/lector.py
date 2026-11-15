@@ -4,6 +4,7 @@ Se llama al programa `tesseract` instalado en el servidor (paquetes `tesseract-o
 salida TSV para tener cada palabra con su confianza. No se usa ningún servicio externo.
 """
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -26,6 +27,14 @@ class Lectura:
     confianza: float | None
     palabras: int
     lineas: list[Linea] = field(default_factory=list)
+
+
+def _entorno() -> dict[str, str]:
+    """Hilos por proceso de Tesseract (ARCA_HILOS_OCR, 1 por defecto): con varios trabajadores en paralelo, más hilos
+    por proceso no aceleran y saturan los núcleos (una página puede pasar del límite de tiempo)."""
+    from arca.nucleo.config import ajustes  # noqa: PLC0415
+
+    return {**os.environ, "OMP_THREAD_LIMIT": str(max(1, ajustes().hilos_ocr))}
 
 
 def disponible() -> bool:
@@ -62,7 +71,7 @@ def orientacion(imagen_png: bytes, tiempo_maximo: int = 60) -> tuple[int, float]
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = Path(carpeta) / "pagina.png"
         ruta.write_bytes(imagen_png)
-        r = subprocess.run(["tesseract", str(ruta), "stdout", "--psm", "0"], capture_output=True, text=True, timeout=tiempo_maximo)
+        r = subprocess.run(["tesseract", str(ruta), "stdout", "--psm", "0"], capture_output=True, text=True, timeout=tiempo_maximo, env=_entorno())
     giro, confianza = 0, 0.0
     for linea in (r.stdout or "").splitlines():
         if linea.startswith("Rotate:"):
@@ -78,7 +87,7 @@ def leer(imagen_png: bytes, idioma: str = "spa", tiempo_maximo: int = 180) -> Le
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = Path(carpeta) / "pagina.png"
         ruta.write_bytes(imagen_png)
-        r = subprocess.run(["tesseract", str(ruta), "stdout", "-l", idioma, "--psm", "3", "tsv"], capture_output=True, text=True, timeout=tiempo_maximo)
+        r = subprocess.run(["tesseract", str(ruta), "stdout", "-l", idioma, "--psm", "3", "tsv"], capture_output=True, text=True, timeout=tiempo_maximo, env=_entorno())
     if r.returncode != 0:
         raise DatosInvalidos(f"El OCR no pudo leer la página: {(r.stderr or '').strip()[:200]}")
     grupos: dict[tuple[int, int, int], list[tuple[str, float]]] = {}
@@ -113,7 +122,7 @@ def pdf_buscable(imagen_png: bytes, idioma: str = "spa", tiempo_maximo: int = 18
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = Path(carpeta) / "pagina.png"
         ruta.write_bytes(imagen_png)
-        r = subprocess.run(["tesseract", str(ruta), str(Path(carpeta) / "salida"), "-l", idioma, "pdf"], capture_output=True, text=True, timeout=tiempo_maximo)
+        r = subprocess.run(["tesseract", str(ruta), str(Path(carpeta) / "salida"), "-l", idioma, "pdf"], capture_output=True, text=True, timeout=tiempo_maximo, env=_entorno())
         destino = Path(carpeta) / "salida.pdf"
         if r.returncode != 0 or not destino.exists():
             raise DatosInvalidos(f"No se pudo generar el PDF con texto: {(r.stderr or '').strip()[:200]}")

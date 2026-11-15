@@ -45,6 +45,8 @@ class Proyecto(IdMixin, TenantMixin, CamposControlMixin, Base):
     estado: Mapped[str] = mapped_column(String(20), default=EstadoProyecto.BORRADOR.value, index=True)
     motivo_estado: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, default=1)
+    logo_archivo_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("archivos.id", ondelete="RESTRICT", use_alter=True, name="fk_proyectos_logo_archivo_id_archivos"))  # logo de la entidad (D-47)
 
 
 class VersionProyecto(IdMixin, TenantMixin, Base):

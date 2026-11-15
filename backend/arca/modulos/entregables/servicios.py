@@ -539,3 +539,39 @@ def archivo_version(ctx, version_id: uuid.UUID) -> tuple[bytes, ArchivoDigital]:
         raise NoEncontrado("La versión no existe")
     archivo = ctx.db.get(ArchivoDigital, v.archivo_id)
     return almacen.leer(archivo.clave_almacen, ctx.tenant_id), archivo
+
+
+# --- Logo de la entidad y salida en PDF (D-47) -------------------------------------------------
+
+MAX_LOGO = 2 * 1024 * 1024
+
+
+def guardar_logo(ctx, proyecto: Proyecto, contenido: bytes, nombre: str) -> ArchivoDigital:
+    if len(contenido) > MAX_LOGO:
+        raise DatosInvalidos("El logo pesa más de 2 MB")
+    a = guardar_archivo(ctx, proyecto, contenido, nombre, {"PNG", "JPEG"})
+    proyecto.logo_archivo_id = a.id
+    ctx.auditar(accion="CAMBIAR_LOGO", objeto="Proyecto", objeto_id=proyecto.id, detalle=f"{proyecto.codigo} · «{nombre[:120]}» · SHA-256 {a.sha256[:16]}…")
+    ctx.db.commit()
+    return a
+
+
+def logo_de(ctx, proyecto: Proyecto) -> bytes | None:
+    if not proyecto.logo_archivo_id:
+        return None
+    a = ctx.db.get(ArchivoDigital, proyecto.logo_archivo_id)
+    return almacen.leer(a.clave_almacen, ctx.tenant_id)
+
+
+def pdf_de_expedicion(ctx, proyecto: Proyecto, expedicion_id: uuid.UUID) -> tuple[bytes, str, bool]:
+    """El entregable expedido, en PDF/A-2b con el logo de la entidad. (contenido, nombre, es PDF/A)."""
+    from arca.nucleo import pdf  # noqa: PLC0415
+
+    datos, archivo = archivo_de(ctx, proyecto, expedicion_id)
+    if not archivo.nombre_original.lower().endswith(".xlsx"):
+        raise DatosInvalidos("Solo los entregables en Excel se pasan a PDF")
+    titulo = archivo.nombre_original.rsplit(".", 1)[0].replace("_", " ")
+    contenido, conforme, _ = pdf.a_pdfa(pdf.desde_excel(datos, titulo, logo_de(ctx, proyecto), proyecto.entidad_cliente), titulo, proyecto.entidad_cliente)
+    ctx.auditar(accion="DESCARGAR_EXPEDICION_PDF", objeto="Expedicion", objeto_id=expedicion_id, detalle=f"{archivo.nombre_original} · {'PDF/A-2b' if conforme else 'PDF'}")
+    ctx.db.commit()
+    return contenido, archivo.nombre_original.rsplit(".", 1)[0] + ".pdf", conforme

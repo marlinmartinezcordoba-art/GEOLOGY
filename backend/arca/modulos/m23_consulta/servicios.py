@@ -252,7 +252,7 @@ def ficha(ctx, proyecto: Proyecto, u: UnidadDocumental, ver_reservado: bool) -> 
     c = _clasificacion(ctx, u.id)
     reservada = bool(c and c["reservada"]) or historias.restringida(ctx, u)
     visible = ver_reservado or not reservada
-    cal = calendario(u, c["e"]) if c else None
+    cal = calendario(u, c["e"], desde=historias.bases_de_retencion(ctx, proyecto).get(u.id)) if c else None
     movs = [{"desde": FASES.get(m.desde or "", None), "hasta": FASES.get(m.hasta, m.hasta), "motivo": m.motivo, "fecha": m.creado_en}
             for m in ctx.db.scalars(select(MovimientoFase).where(MovimientoFase.unidad_id == u.id).order_by(MovimientoFase.creado_en))]
     h = ctx.db.scalar(select(HojaControl).where(HojaControl.unidad_id == u.id, HojaControl.estado == "verificada"))

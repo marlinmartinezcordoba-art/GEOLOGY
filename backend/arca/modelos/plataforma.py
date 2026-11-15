@@ -93,3 +93,15 @@ class Membresia(IdMixin, TenantMixin, CamposControlMixin, Base):
     usuario: Mapped[Usuario] = relationship(back_populates="membresias", foreign_keys=[usuario_id])
     rol: Mapped[Rol] = relationship()
     organizacion: Mapped[Organizacion] = relationship()
+
+
+class TokenRecuperacion(IdMixin, Base):
+    """Enlace de un solo uso para que la persona restablezca su contraseña (D-46). Solo se guarda la huella del token."""
+
+    __tablename__ = "tokens_recuperacion"
+
+    usuario_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), index=True)
+    huella: Mapped[str] = mapped_column(String(64), unique=True)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    usado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

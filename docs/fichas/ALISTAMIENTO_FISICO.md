@@ -39,6 +39,14 @@ unidades) y si es obligatoria. ARCA trae una propuesta de ejemplo que se ajusta 
 - **Paquete de entrega:** si el plan lo exige, solo entran expedientes con el alistamiento obligatorio
   completo, y `pendientes.csv` dice qué falta. El `metadatos.json` de cada expediente lleva su alistamiento.
 
+## Diagnóstico de conservación
+
+Por expediente, al recibirlo: estado (bueno, regular, malo), hallazgos (deterioro biológico, humedad,
+rasgaduras, folios faltantes o sueltos, material oxidado, adhesivos, tinta desvanecida, papel térmico, fuego u
+otro), folios afectados y observación. El **deterioro biológico** marca el expediente **para aislar**. El avance
+muestra cuántos hay en cada estado y cuántos por aislar; la hoja de control lo avisa; el paquete de entrega lo
+lleva en `metadatos.json`. Queda en la auditoría (`DIAGNOSTICAR_CONSERVACION`).
+
 ## Permisos
 
 | Acción | Quién |

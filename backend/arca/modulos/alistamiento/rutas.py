@@ -31,6 +31,13 @@ class Registro(BaseModel):
     observacion: str = Field(default="", max_length=1000)
 
 
+class Diagnostico(BaseModel):
+    estado: str
+    hallazgos: list[str] = Field(default_factory=list, max_length=20)
+    folios_afectados: int | None = Field(default=None, ge=0)
+    observacion: str = Field(default="", max_length=2000)
+
+
 class Deshacer(BaseModel):
     motivo: str = Field(min_length=5, max_length=500)
 
@@ -67,3 +74,15 @@ def registrar(proyecto_id: uuid.UUID, datos: Registro, ctx: Operario) -> dict[st
 def deshacer(proyecto_id: uuid.UUID, unidad_id: uuid.UUID, actividad: str, datos: Deshacer, ctx: Operario) -> dict[str, str]:
     servicios.deshacer(ctx, obtener_proyecto(ctx, proyecto_id), unidad_id, actividad, datos.motivo)
     return {"estado": "deshecho"}
+
+
+@rutas.get("/diagnostico/catalogo")
+def catalogo(proyecto_id: uuid.UUID, ctx: Lector) -> dict[str, Any]:
+    obtener_proyecto(ctx, proyecto_id)
+    return servicios.catalogo_diagnostico()
+
+
+@rutas.put("/expedientes/{unidad_id}/diagnostico")
+def diagnosticar(proyecto_id: uuid.UUID, unidad_id: uuid.UUID, datos: Diagnostico, ctx: Operario) -> dict[str, Any] | None:
+    p = obtener_proyecto(ctx, proyecto_id)
+    return servicios.diagnostico_dict(servicios.diagnosticar(ctx, p, unidad_id, datos.estado, datos.hallazgos, datos.folios_afectados, datos.observacion))

@@ -48,7 +48,7 @@ from arca.modelos import (
 from arca.modelos.base import ahora_utc
 from arca.modelos.transferencias import FASES
 from arca.modulos.alistamiento import servicios as alistamiento
-from arca.modulos.entrega import pdfa
+from arca.modulos.entrega import indexacion, pdfa
 from arca.modulos.historias import servicios as historias
 from arca.modulos.inspeccion import servicios as inspeccion
 from arca.modulos.m08_inventarios.fuid import clave_de
@@ -160,6 +160,7 @@ def _metadatos(ctx, proyecto: Proyecto, u: UnidadDocumental, pags: list[dict[str
                    "fase": FASES.get(u.fase, u.fase), "disposicion_aplicada": u.disposicion_aplicada, "lote": caja.lote if caja else ""},
         "clasificacion": clas,
         "titular": historias.como_dict(historias.titular_de(ctx, u)),
+        "diagnostico_conservacion": alistamiento.diagnostico_dict(alistamiento.diagnostico_de(ctx, u)),
         "alistamiento": [{"actividad": i.actividad, "cantidad": i.cantidad, "observacion": i.observacion, "hecho_en": i.hecho_en.isoformat()}
                          for i in ctx.db.scalars(select(IntervencionExpediente).where(IntervencionExpediente.unidad_id == u.id).order_by(IntervencionExpediente.hecho_en))],
         "hoja_control": None if not h else {"total_folios": h.total_folios, "imagenes_por_folio": h.imagenes_por_folio, "verificada_en": h.verificada_en.isoformat() if h.verificada_en else None, "documentos": tramites},
@@ -208,6 +209,10 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
     manifiesto: list[list[Any]] = [["archivo", "bytes", "sha256"]]
     originales: list[list[Any]] = [["expediente", "archivo original", "formato", "páginas", "bytes", "sha256", "calidad"]]
     con_texto = True
+    from arca.modulos.m03_configuracion.servicios import valor_vigente  # noqa: PLC0415
+
+    config_indice = valor_vigente(ctx.db, ctx.tenant_id, "entrega.indexacion", por_defecto=None, proyecto_id=proyecto.id)
+    filas_indice: list[list[Any]] = []
     informe_pdfa: list[list[Any]] = [["expediente", "formato", "conforme", "validado con", "hallazgos"]]
 
     def agregar(z: zipfile.ZipFile, ruta: str, datos: bytes) -> None:
@@ -225,6 +230,9 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
             informe_pdfa.append([u.identificador, meta["pdf"]["formato"], "sí" if pdf.conforme else "no", pdf.motor,
                                  " | ".join(f"{h['regla']}: {h['mensaje']}" for h in pdf.hallazgos)[:2000]])
             agregar(z, f"{carpeta}/expediente.pdf", pdf.contenido)
+            if config_indice:
+                filas_indice += indexacion.filas(config_indice, meta, {"ruta": f"{carpeta}/expediente.pdf", "formato": meta["pdf"]["formato"],
+                                                                       "sha256": almacen.huella(pdf.contenido), "paginas": len(pags)})
             agregar(z, f"{carpeta}/metadatos.json", json.dumps(meta, ensure_ascii=False, indent=2, default=str).encode("utf-8"))
             if meta["hoja_control"]:
                 filas = [["n.º", "fecha", "tipo documental", "detalle", "folio desde", "folio hasta", "radicado", "asunto", "remitente", "destinatario", "observaciones"]]
@@ -235,6 +243,8 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
                 originales.append([u.identificador, o["archivo"], o["formato"], o["paginas"], o["tamano"], o["sha256"], o["calidad"]])
         agregar(z, "originales.csv", _csv(originales))
         agregar(z, "pdfa.csv", _csv(informe_pdfa))
+        if config_indice:
+            agregar(z, config_indice.get("nombre_archivo", "indice.csv"), indexacion.archivo(config_indice, filas_indice))
         agregar(z, "pendientes.csv", _csv([["expediente", "por qué no entró"]] + [[x["identificador"], x["motivo"]] for x in paquete.pendientes]))
         conformes = sum(1 for f in informe_pdfa[1:] if f[2] == "sí")
         leame = (f"Paquete de entrega n.º {paquete.numero} · {proyecto.codigo} · {proyecto.nombre}\nEntidad: {proyecto.entidad_cliente}\n"

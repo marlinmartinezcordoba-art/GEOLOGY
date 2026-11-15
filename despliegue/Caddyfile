@@ -1,0 +1,20 @@
+# HTTPS automático (Let's Encrypt) para el dominio de ARCA. Todo entra por la interfaz, que reenvía /api a la API.
+{$ARCA_DOMINIO} {
+	encode zstd gzip
+	request_body {
+		max_size 500MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	# El estado del servicio solo desde la red interna o el monitor (no se publica).
+	@estado path /estado
+	respond @estado 404
+	reverse_proxy web:3000 {
+		transport http {
+			read_timeout 10m
+			write_timeout 10m
+		}
+	}
+}

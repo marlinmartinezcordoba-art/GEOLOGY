@@ -15,6 +15,8 @@ import { useSesion } from "@/lib/sesion";
 import type { Expedicion, PaqueteEntrega, Plantilla, Proyecto, TipoPlantilla, ValidacionPdfa } from "@/lib/tipos";
 import { useDatos } from "@/lib/use-datos";
 
+import { Indexacion, InformeAvance, LogoEntidad } from "./entregables_extra";
+
 const ICONO = { fuid: <FileOutput />, rotulo_caja: <Tags />, rotulo_carpeta: <Tags /> } as Record<string, React.ReactNode>;
 
 /** Expedición de FUID de salida y rótulos sobre las plantillas vigentes de la entidad. */
@@ -143,6 +145,9 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
           </Tabla>
         )}
       </div>
+      <Indexacion proyectoId={proyecto.id} />
+      <InformeAvance proyectoId={proyecto.id} codigo={proyecto.codigo} />
+      <LogoEntidad proyectoId={proyecto.id} />
       <ValidarPdfa ruta={`/proyectos/${proyecto.id}/entrega/validar-pdfa`} />
       <div>
         <p className="mb-2 font-semibold text-titulo">Documentos expedidos</p>
@@ -158,7 +163,10 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
                   <td><Insignia tono="marca">v{e.plantilla_version}{e.codigo_formato ? ` · ${e.codigo_formato}` : ""}</Insignia></td>
                   <td className="text-[12px] text-texto-3">{[e.filtro.cajas?.length ? `cajas ${e.filtro.cajas.join(", ")}` : "", e.filtro.lote ? `lote ${e.filtro.lote}` : ""].filter(Boolean).join(" · ") || "Todo"}</td>
                   <td><Codigo className="text-[11px]">{e.sha256.slice(0, 16)}…</Codigo></td>
-                  <td><Boton tamano="sm" variante="fantasma" icono={<Download />} onClick={() => descargarArchivo(`${base}/${e.id}/archivo`, e.nombre_archivo).catch((err) => avisos.error(err.message))}>Descargar</Boton></td>
+                  <td className="whitespace-nowrap">
+                    <Boton tamano="sm" variante="fantasma" icono={<Download />} onClick={() => descargarArchivo(`${base}/${e.id}/archivo`, e.nombre_archivo).catch((err) => avisos.error(err.message))}>Excel</Boton>
+                    {e.nombre_archivo.toLowerCase().endsWith(".xlsx") && <Boton tamano="sm" variante="fantasma" icono={<Download />} onClick={() => descargarArchivo(`${base}/${e.id}/pdf`, e.nombre_archivo.replace(/\.xlsx$/i, ".pdf")).catch((err) => avisos.error(err.message))}>PDF/A</Boton>}
+                  </td>
                 </tr>
               ))}
             </tbody>

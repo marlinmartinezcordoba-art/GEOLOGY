@@ -72,3 +72,25 @@ def test_plan_registro_por_caja_avance_y_controles(cliente, org_a, org_b):
     assert cliente.get(f"{al}/cajas", headers=consulta).status_code == 200
     assert cliente.post(f"{al}/registrar", json={"actividad": "ordenacion", "cajas": ["C-2"]}, headers=consulta).status_code == 403
     assert cliente.get(f"{al}/cajas", headers=org_b.admin).status_code == 404
+
+
+def test_diagnostico_de_conservacion(cliente, org_a):
+    p, base, director, u = _proyecto(cliente, org_a)
+    al = f"{base}/alistamiento"
+    cat = cliente.get(f"{al}/diagnostico/catalogo", headers=org_a.admin).json()
+    assert cat["hallazgos"]["biologico"]["aislar"] is True and "malo" in cat["estados"]
+    d = f"{al}/expedientes/{u['HL-3']}/diagnostico"
+    assert cliente.put(d, json={"estado": "pésimo"}, headers=org_a.admin).status_code == 422
+    assert cliente.put(d, json={"estado": "bueno", "hallazgos": ["humedad"]}, headers=org_a.admin).status_code == 422
+    assert cliente.put(d, json={"estado": "malo", "hallazgos": ["otro"]}, headers=org_a.admin).status_code == 422  # «otro» pide observación
+    r = cliente.put(d, json={"estado": "malo", "hallazgos": ["biologico", "humedad"], "folios_afectados": 4, "observacion": "Hongos en los folios 3 a 6"}, headers=org_a.admin)
+    assert r.status_code == 200 and r.json()["aislar"] is True
+    cliente.put(f"{al}/expedientes/{u['HL-4']}/diagnostico", json={"estado": "bueno"}, headers=org_a.admin)
+    resumen = cliente.get(f"{al}/cajas", headers=org_a.admin).json()["resumen"]["diagnostico"]
+    assert resumen == {"registrados": 2, "bueno": 1, "regular": 0, "malo": 1, "aislar": 1}
+    exp = {e["identificador"]: e for e in cliente.get(f"{al}/expedientes", params={"caja": "C-2"}, headers=org_a.admin).json()}
+    assert exp["HL-3"]["diagnostico"]["folios_afectados"] == 4 and exp["HL-4"]["diagnostico"]["estado"] == "bueno"
+    hc = f"{base}/hojas-control/unidades/{u['HL-3']}"
+    cliente.post(hc, json={}, headers=org_a.admin)
+    avisos = cliente.get(hc, headers=org_a.admin).json()["validacion"]["avisos"]
+    assert any("conservación malo" in a and "AISLAR" in a for a in avisos)  # aunque no haya plan de alistamiento

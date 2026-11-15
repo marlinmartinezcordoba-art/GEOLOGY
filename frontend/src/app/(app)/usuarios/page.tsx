@@ -137,10 +137,10 @@ export default function Usuarios() {
           roles={roles.datos ?? []}
           proyectos={proyectos.datos ?? []}
           alCerrar={() => setNuevo(false)}
-          alGuardar={(correo, clave) => {
+          alGuardar={(correo, clave, enviada) => {
             setNuevo(false);
             setTemporal(clave ? { correo, clave } : null);
-            avisos.exito(clave ? "Persona agregada. Entréguele su contraseña temporal." : "La persona ya tenía cuenta en ARCA: entra con su contraseña de siempre.");
+            avisos.exito(enviada ? "Persona agregada. Se le envió la contraseña temporal por correo." : clave ? "Persona agregada. Entréguele su contraseña temporal." : "La persona ya tenía cuenta en ARCA: entra con su contraseña de siempre.");
             void miembros.recargar();
           }}
         />
@@ -163,9 +163,9 @@ export default function Usuarios() {
         alCerrar={() => setAccion(null)}
         alConfirmar={async (motivo) => {
           const a = accion!;
-          const r = await api<{ clave_temporal?: string } | null>(`/usuarios/${a.miembro.usuario_id}/${a.tipo}`, { metodo: "POST", cuerpo: { motivo } });
+          const r = await api<{ clave_temporal?: string | null; enviada_por_correo?: boolean } | null>(`/usuarios/${a.miembro.usuario_id}/${a.tipo}`, { metodo: "POST", cuerpo: { motivo } });
           if (r?.clave_temporal) setTemporal({ correo: a.miembro.correo, clave: r.clave_temporal });
-          avisos.exito("Listo. Quedó en la auditoría.");
+          avisos.exito(r?.enviada_por_correo ? "Listo. La contraseña temporal se le envió por correo. Quedó en la auditoría." : "Listo. Quedó en la auditoría.");
           await miembros.recargar();
         }}
       />
@@ -173,7 +173,7 @@ export default function Usuarios() {
   );
 }
 
-function ModalPersona({ roles, proyectos, alCerrar, alGuardar }: { roles: Rol[]; proyectos: Proyecto[]; alCerrar: () => void; alGuardar: (correo: string, clave: string | null) => void }) {
+function ModalPersona({ roles, proyectos, alCerrar, alGuardar }: { roles: Rol[]; proyectos: Proyecto[]; alCerrar: () => void; alGuardar: (correo: string, clave: string | null, enviada: boolean) => void }) {
   const [d, setD] = useState({ correo: "", nombre_completo: "", rol_id: "" });
   const [alcance, setAlcance] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -196,8 +196,8 @@ function ModalPersona({ roles, proyectos, alCerrar, alGuardar }: { roles: Rol[];
               setEnviando(true);
               setError(null);
               try {
-                const r = await api<{ clave_temporal: string | null }>("/usuarios", { metodo: "POST", cuerpo: { ...d, proyectos: alcance } });
-                alGuardar(d.correo, r.clave_temporal);
+                const r = await api<{ clave_temporal: string | null; enviada_por_correo?: boolean }>("/usuarios", { metodo: "POST", cuerpo: { ...d, proyectos: alcance } });
+                alGuardar(d.correo, r.clave_temporal, !!r.enviada_por_correo);
               } catch (e) {
                 setError((e as Error).message);
                 setEnviando(false);

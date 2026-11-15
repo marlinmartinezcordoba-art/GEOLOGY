@@ -279,19 +279,33 @@ def _mas_anios(d: date, anios: int) -> date:
         return d.replace(year=d.year + anios, day=28)
 
 
-def calendario(u: UnidadDocumental, e: ElementoInstrumento, hoy: date | None = None) -> dict[str, Any]:
-    """Cuándo termina cada fase según la retención, contada desde la fecha final de la unidad."""
+SIN_RETIRO = object()  # historia laboral de una persona aún vinculada: la retención todavía no empieza a contar
+
+
+def calendario(u: UnidadDocumental, e: ElementoInstrumento, hoy: date | None = None, desde: date | object | None = None) -> dict[str, Any]:
+    """Cuándo termina cada fase según la retención, contada desde la fecha final de la unidad.
+
+    `desde` cambia la fecha desde la que se cuenta: en una historia laboral, la fecha de retiro del titular (Acuerdo AGN
+    001 de 2024, artículo 9.5.5: la retención en gestión se cuenta desde la desvinculación). `SIN_RETIRO` = la persona
+    sigue vinculada y la historia está abierta.
+    """
     hoy = hoy or date.today()
     disposicion = DISPOSICION.get(e.disposicion or "", e.disposicion)
-    if not u.fecha_final or e.retencion_gestion is None:
+    if desde is SIN_RETIRO:
+        return {"fin_gestion": None, "fin_central": None, "fase": "gestion", "disposicion": disposicion, "base": "retiro",
+                "nota": "Historia laboral abierta: la persona sigue vinculada (sin fecha de retiro), la retención aún no cuenta"}
+    base = desde if isinstance(desde, date) else u.fecha_final
+    if not base or e.retencion_gestion is None:
         return {"fin_gestion": None, "fin_central": None, "fase": None, "disposicion": disposicion,
                 "nota": "Sin fecha final o sin tiempo de retención: no se puede calcular el calendario"}
-    fin_g = _mas_anios(u.fecha_final, e.retencion_gestion)
+    fin_g = _mas_anios(base, e.retencion_gestion)
     fin_c = _mas_anios(fin_g, e.retencion_central or 0)
     fase = "gestion" if hoy < fin_g else ("central" if hoy < fin_c else "cumplida")
     nota = {"gestion": f"En archivo de gestión hasta {fin_g.isoformat()}", "central": f"En archivo central hasta {fin_c.isoformat()}",
             "cumplida": f"Cumplió la retención: aplicar {disposicion}"}[fase]
-    return {"fin_gestion": fin_g, "fin_central": fin_c, "fase": fase, "disposicion": disposicion, "nota": nota}
+    if isinstance(desde, date):
+        nota += f" (contado desde el retiro, {desde.isoformat()})"
+    return {"fin_gestion": fin_g, "fin_central": fin_c, "fase": fase, "disposicion": disposicion, "nota": nota, "base": "retiro" if isinstance(desde, date) else "fecha_final"}
 
 
 def estado(ctx, proyecto: Proyecto) -> list[dict[str, Any]]:
@@ -301,6 +315,9 @@ def estado(ctx, proyecto: Proyecto) -> list[dict[str, Any]]:
     versiones = {v.id: v for v in ctx.db.scalars(select(VersionInstrumento).where(VersionInstrumento.id.in_({c.version_id for c in activas.values()})))} if activas else {}
     insts = {i.id: i for i in instrumentos.listar(ctx, proyecto)}
     elementos = {e.id: e for e in ctx.db.scalars(select(ElementoInstrumento).where(ElementoInstrumento.id.in_({c.elemento_id for c in activas.values()})))} if activas else {}
+    from arca.modulos.historias.servicios import bases_de_retencion  # noqa: PLC0415
+
+    bases = bases_de_retencion(ctx, proyecto)
     filas = []
     for u in sorted(ctx.db.scalars(select(UnidadDocumental).where(UnidadDocumental.proyecto_id == proyecto.id)), key=lambda x: (x.numero_orden or "", x.identificador)):
         c = activas.get(u.id)
@@ -311,7 +328,7 @@ def estado(ctx, proyecto: Proyecto) -> list[dict[str, Any]]:
             fila["clasificacion"] = {"id": c.id, "estado": c.estado, "origen": c.origen, "confianza": c.confianza, "porque": c.porque, "elemento_id": e.id,
                                      "codigo": e.codigo, "nombre": e.nombre, "nivel": e.nivel, "serie": e.padre, "dependencia": e.codigo_dependencia,
                                      "instrumento": f"{i.tipo} · {i.nombre}", "version": v.version, "version_vigente": v.id in vigentes_ids,
-                                     "calendario": calendario(u, e), "creado_en": c.creado_en, "decidido_en": c.decidido_en}
+                                     "calendario": calendario(u, e, desde=bases.get(u.id)), "creado_en": c.creado_en, "decidido_en": c.decidido_en}
             fila["situacion"] = c.estado if v.id in vigentes_ids else "version_anterior"
             if u.codigo_serie and normalizar_texto(u.codigo_serie) not in (normalizar_texto(e.codigo), normalizar_texto(e.padre or "")):
                 fila["alertas"].append(f"el FUID dice «{u.codigo_serie}» y la unidad quedó en {e.codigo}")

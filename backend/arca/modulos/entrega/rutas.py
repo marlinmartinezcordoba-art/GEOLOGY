@@ -58,3 +58,13 @@ async def validar_pdfa(proyecto_id: uuid.UUID, ctx: Lector, archivo: UploadFile 
     ctx.auditar(accion="VALIDAR_PDFA", objeto="Proyecto", objeto_id=p.id, detalle=f"{p.codigo} · «{(archivo.filename or '')[:120]}» · {r['nivel']} · {r['veredicto']}")
     ctx.db.commit()
     return {"archivo": archivo.filename, "bytes": len(contenido), **r}
+
+
+@rutas.get("/indexacion")
+def indexacion(proyecto_id: uuid.UUID, ctx: Lector) -> dict[str, Any]:
+    """Los campos que puede llevar el archivo de indexación y la configuración vigente del proyecto (parámetro «entrega.indexacion»)."""
+    from arca.modulos.entrega import indexacion as ix  # noqa: PLC0415
+    from arca.modulos.m03_configuracion.servicios import valor_vigente  # noqa: PLC0415
+
+    p = obtener_proyecto(ctx, proyecto_id)
+    return {"campos": ix.CAMPOS, "config": valor_vigente(ctx.db, ctx.tenant_id, "entrega.indexacion", por_defecto=None, proyecto_id=p.id)}

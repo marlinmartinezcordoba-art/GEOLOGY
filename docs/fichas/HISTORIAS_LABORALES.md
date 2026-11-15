@@ -65,7 +65,9 @@ Quien elabora la hoja de control confirma el titular y completa el cargo, la dep
 vinculación y retiro. Lo que escribe queda con su nombre como origen, y queda en la auditoría
 (`PROPONER_TITULAR`, `CONFIRMAR_TITULAR`, `CONFIGURAR_HISTORIAS`).
 
-## Lo que falta
+## Retención desde el retiro (artículo 9.5.5)
 
-- **Retención desde el retiro:** el calendario de transferencias de una historia laboral debe contarse desde
-  la fecha de retiro confirmada, no desde la fecha final del FUID.
+En una historia laboral con titular confirmado, el calendario de retención (clasificación, transferencias,
+disposición y consulta) se cuenta desde la **fecha de retiro**, no desde la fecha final del FUID. Si la persona
+sigue vinculada (sin fecha de retiro), la historia está abierta: la retención no cuenta y no se transfiere.
+Lo que no tiene titular confirmado se calcula como cualquier unidad.

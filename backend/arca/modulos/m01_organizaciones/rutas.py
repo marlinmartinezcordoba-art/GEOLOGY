@@ -66,7 +66,8 @@ class OrganizacionSalida(BaseModel):
 class OrganizacionCreada(BaseModel):
     organizacion: OrganizacionSalida
     administrador_correo: str
-    clave_temporal: str | None = Field(description="Solo si el administrador es nuevo. Se muestra una única vez.")
+    clave_temporal: str | None = Field(description="Solo si el administrador es nuevo y no se pudo enviar por correo. Se muestra una única vez.")
+    enviada_por_correo: bool = False
 
 
 class PerfilOrganizacion(OrganizacionSalida):
@@ -76,7 +77,11 @@ class PerfilOrganizacion(OrganizacionSalida):
 @plataforma.post("/organizaciones", status_code=status.HTTP_201_CREATED, response_model=OrganizacionCreada)
 def crear_organizacion(datos: OrganizacionNueva, db: Sesion, operador: Operador, origen: Origen):
     org, admin, temporal = servicios.crear(db, operador, datos.model_dump(mode="json"), origen)
-    return OrganizacionCreada(organizacion=OrganizacionSalida.model_validate(org), administrador_correo=admin.correo, clave_temporal=temporal)
+    from arca.modulos.m02_usuarios.servicios import entregar_temporal  # noqa: PLC0415
+
+    enviada = bool(temporal) and entregar_temporal(admin.correo, admin.nombre_completo, temporal, org.nombre, "Le crearon la cuenta de administración")
+    return OrganizacionCreada(organizacion=OrganizacionSalida.model_validate(org), administrador_correo=admin.correo, clave_temporal=None if enviada else temporal,
+                              enviada_por_correo=enviada)
 
 
 @plataforma.get("/organizaciones", response_model=list[OrganizacionSalida])

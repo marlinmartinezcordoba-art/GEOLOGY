@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from arca.api.deps import Contexto, requiere
 from arca.modulos.entregables import servicios
 from arca.modulos.m06_proyectos.servicios import obtener as obtener_proyecto
-from arca.nucleo.errores import DatosInvalidos
+from arca.nucleo.errores import DatosInvalidos, NoEncontrado
 from arca.nucleo.permisos import Permiso
 
 plantillas = APIRouter(prefix="/plantillas", tags=["Entregables · Plantillas"])
@@ -166,3 +166,28 @@ def descargar(proyecto_id: uuid.UUID, expedicion_id: uuid.UUID, ctx: Lector):
     ctx.auditar(accion="DESCARGAR_EXPEDICION", objeto="Expedicion", objeto_id=expedicion_id, detalle=archivo.nombre_original)
     ctx.db.commit()
     return _descarga(datos, archivo.nombre_original, archivo.sha256)
+
+
+@expedicion.get("/{expedicion_id}/pdf")
+def descargar_pdf(proyecto_id: uuid.UUID, expedicion_id: uuid.UUID, ctx: Lector):
+    """El entregable en PDF/A-2b con el logo de la entidad (si el proyecto lo tiene)."""
+    contenido, nombre, conforme = servicios.pdf_de_expedicion(ctx, obtener_proyecto(ctx, proyecto_id), expedicion_id)
+    return Response(contenido, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{nombre}"', "X-PDFA": "2b" if conforme else "no"})
+
+
+logo = APIRouter(prefix="/proyectos/{proyecto_id}/logo", tags=["Entregables · Logo de la entidad"])
+Director = Annotated[Contexto, Depends(requiere(Permiso.PROYECTOS))]
+
+
+@logo.put("", status_code=status.HTTP_201_CREATED)
+async def subir_logo(proyecto_id: uuid.UUID, ctx: Director, archivo: UploadFile = File(...)) -> dict[str, Any]:
+    a = servicios.guardar_logo(ctx, obtener_proyecto(ctx, proyecto_id), await archivo.read(servicios.MAX_LOGO + 1), archivo.filename or "logo")
+    return {"archivo_id": a.id, "sha256": a.sha256}
+
+
+@logo.get("")
+def ver_logo(proyecto_id: uuid.UUID, ctx: Lector):
+    datos = servicios.logo_de(ctx, obtener_proyecto(ctx, proyecto_id))
+    if datos is None:
+        raise NoEncontrado("El proyecto no tiene logo")
+    return Response(datos, media_type="image/png" if datos.startswith(b"\x89PNG") else "image/jpeg", headers={"Cache-Control": "private, max-age=300"})

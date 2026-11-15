@@ -11,9 +11,9 @@ import { api, ErrorApi, sesionGuardada } from "@/lib/api";
 import { requisitosClave } from "@/lib/clave";
 import type { Token, Yo } from "@/lib/tipos";
 
-const ETAPAS = ["Recepción", "Inventario", "Captura", "Calidad", "OCR", "Clasificación", "Revisión", "Expediente", "Entrega"];
+const ETAPAS = ["Inventario", "Alistamiento", "Digitalización", "Calidad", "OCR", "Hoja de control", "Verificación", "Inspección", "Entrega"];
 
-type Paso = "clave" | "mfa" | "nueva";
+type Paso = "clave" | "mfa" | "nueva" | "recuperar";
 
 export default function Ingresar() {
   const router = useRouter();
@@ -25,6 +25,7 @@ export default function Ingresar() {
   const [confirmacion, setConfirmacion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   async function abrir() {
     const yo = await api<Yo>("/auth/yo", { sinOrganizacion: true });
@@ -42,6 +43,12 @@ export default function Ingresar() {
     setEnviando(true);
     setError(null);
     try {
+      if (paso === "recuperar") {
+        const r = await api<{ mensaje: string }>("/auth/recuperar", { metodo: "POST", cuerpo: { correo }, sinOrganizacion: true });
+        setAviso(r.mensaje);
+        setEnviando(false);
+        return;
+      }
       if (paso === "nueva") {
         if (requisitosClave(nueva, correo).some((r) => !r.ok)) throw new Error("La contraseña nueva no cumple los requisitos.");
         if (nueva !== confirmacion) throw new Error("Las dos contraseñas no coinciden.");
@@ -83,6 +90,7 @@ export default function Ingresar() {
     clave: ["Ingresar", "Con el correo que le asignó su organización."],
     mfa: ["Verificación en dos pasos", "Escriba el código de 6 dígitos de su aplicación de autenticación."],
     nueva: ["Cree su contraseña", "Su contraseña actual es temporal. Cree una que solo usted conozca."],
+    recuperar: ["Recuperar la contraseña", "Le enviaremos un enlace a su correo para crear una nueva."],
   };
 
   return (
@@ -100,7 +108,7 @@ export default function Ingresar() {
         <div className="relative max-w-xl">
           <p className="mb-3 text-[13px] font-medium tracking-wide text-motor-vivo uppercase">Gestión archivística, digitalización y automatización documental</p>
           <h1 className="text-[42px] leading-[1.1] font-semibold tracking-tight">Del archivo físico al expediente digital, sin perder el orden original.</h1>
-          <p className="mt-4 max-w-lg text-lg text-profundo-texto">La IA propone, su equipo valida y ARCA lo deja registrado, con procedencia, evidencia y trazabilidad.</p>
+          <p className="mt-4 max-w-lg text-lg text-profundo-texto">ARCA propone desde el OCR y las reglas archivísticas, su equipo valida y todo queda registrado, con procedencia, evidencia y trazabilidad.</p>
           <ol className="mt-9 grid max-w-lg grid-cols-3 gap-x-4 gap-y-3">
             {ETAPAS.map((nombre, i) => (
               <li key={nombre} className="flex items-center gap-2.5 text-[13px]">
@@ -145,7 +153,19 @@ export default function Ingresar() {
                 <Boton type="submit" variante="primario" cargando={enviando} icono={<KeyRound />} className="mt-1 h-11 text-[15px]">
                   Ingresar
                 </Boton>
-                <p className="text-center text-[12px] text-texto-3">¿Olvidó su contraseña? Pídale al administrador de su organización que la restablezca.</p>
+                <button type="button" onClick={() => (setPaso("recuperar"), setError(null), setAviso(null))} className="text-center text-[12.5px] text-marca underline">¿Olvidó su contraseña?</button>
+              </div>
+            )}
+
+            {paso === "recuperar" && (
+              <div className="flex flex-col gap-4">
+                <Campo etiqueta="Correo">
+                  <Entrada type="email" autoComplete="username" required value={correo} onChange={(e) => setCorreo(e.target.value)} className="h-10" autoFocus />
+                </Campo>
+                {error && <CajaError mensaje={error} />}
+                {aviso && <p className="rounded-md bg-info-suave px-3 py-2 text-[13px] text-info">{aviso} Si no le llega, pídale al administrador de su organización que restablezca su contraseña.</p>}
+                <Boton type="submit" variante="primario" cargando={enviando} icono={<KeyRound />} className="mt-1 h-11 text-[15px]">Enviar el enlace</Boton>
+                <button type="button" onClick={volver} className="text-[12.5px] text-texto-3 underline">Volver a ingresar</button>
               </div>
             )}
 

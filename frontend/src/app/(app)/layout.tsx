@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -13,7 +13,7 @@ import { ProveedorSesion, useSesion } from "@/lib/sesion";
 /** Sin el permiso del módulo la pantalla no se abre, aunque se escriba la dirección a mano. */
 function GuardaModulo({ children }: { children: React.ReactNode }) {
   const ruta = usePathname();
-  const { puede, usuario } = useSesion();
+  const { puede, usuario, organizacion } = useSesion();
   const plataforma = ruta.startsWith("/plataforma");
   const m = MODULOS.find((x) => ruta === x.href || ruta.startsWith(x.href + "/"));
   const sinAcceso = (plataforma && !usuario.es_operador) || (!plataforma && usuario.es_operador && !ruta.startsWith("/cuenta")) || (m?.permiso && !puede(m.permiso));
@@ -24,6 +24,16 @@ function GuardaModulo({ children }: { children: React.ReactNode }) {
         titulo="Sin acceso"
         descripcion={usuario.es_operador ? "El operador de la plataforma administra organizaciones, pero no entra a su contenido." : "Su rol no tiene acceso a esta sección. Si la necesita para su trabajo, solicítela al administrador de su organización."}
         accion={<Link href={usuario.es_operador ? "/plataforma" : "/inicio"} className="font-semibold text-marca hover:underline">Volver</Link>}
+      />
+    );
+  }
+  if (organizacion?.mfa_exigido && !usuario.mfa_activo && !ruta.startsWith("/cuenta")) {
+    return (
+      <Vacio
+        icono={<ShieldCheck />}
+        titulo="Active la verificación en dos pasos"
+        descripcion="Su organización la exige para su rol. Actívela en «Mi cuenta» con una aplicación de autenticación y vuelva a entrar a esta sección."
+        accion={<Link href="/cuenta" className="font-semibold text-marca hover:underline">Ir a Mi cuenta</Link>}
       />
     );
   }

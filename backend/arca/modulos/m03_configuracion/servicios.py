@@ -24,9 +24,32 @@ _TOLERANCIA = timedelta(minutes=2)
 
 # Parámetros que ARCA ya interpreta. Los demás se guardan pero ningún proceso los lee todavía.
 CONOCIDOS: dict[str, str] = {
-    "seguridad.mfa_privilegiados": "true exige verificación en dos pasos a los roles que administran usuarios, roles o configuración",
+    "seguridad.mfa_privilegiados": "true exige verificación en dos pasos a los roles que administran usuarios, roles o configuración (anterior a seguridad.mfa_obligatorio)",
+    "seguridad.mfa_obligatorio": "A quién se exige verificación en dos pasos: «ninguno», «privilegiados» (administran usuarios, roles o configuración), «direccion» (además, quien dirige proyectos, aprueba instrumentos o ve lo reservado) o «todos»",
+    "entrega.indexacion": "Archivo de indexación para el SGDEA de la entidad: columnas {nombre, campo}, «por» expediente o documento, separador y nombre del archivo (va en el paquete de entrega)",
     "digitalizacion.perfil": "Perfil de digitalización del proyecto: formatos, resolución, color, blancos, rechazo automático e identificación de expedientes",
 }
+
+
+NIVELES_MFA = ("ninguno", "privilegiados", "direccion", "todos")
+DIRECCION = {"proyectos:gestionar", "instrumentos:aprobar", "consulta:reservada", "disposicion:aprobar"}
+
+
+def mfa_exigido(db: Session, membresia) -> bool:
+    """Si la organización exige verificación en dos pasos a esta membresía (por su rol)."""
+    from arca.nucleo.permisos import PRIVILEGIADOS  # noqa: PLC0415
+
+    nivel = valor_vigente(db, membresia.tenant_id, "seguridad.mfa_obligatorio", por_defecto=None)
+    if nivel is None:
+        nivel = "privilegiados" if valor_vigente(db, membresia.tenant_id, "seguridad.mfa_privilegiados", por_defecto=False) is True else "ninguno"
+    permisos = set(membresia.rol.permisos)
+    if nivel == "todos":
+        return True
+    if nivel == "direccion":
+        return bool(PRIVILEGIADOS & permisos or DIRECCION & permisos)
+    if nivel == "privilegiados":
+        return bool(PRIVILEGIADOS & permisos)
+    return False
 
 
 def _validar_clave(clave: str) -> None:
@@ -37,6 +60,15 @@ def _validar_clave(clave: str) -> None:
 def _validar_valor(clave: str, valor) -> None:
     if clave == "seguridad.mfa_privilegiados" and not isinstance(valor, bool):
         raise DatosInvalidos("«seguridad.mfa_privilegiados» solo admite true o false")
+    if clave == "seguridad.mfa_obligatorio" and valor not in NIVELES_MFA:
+        raise DatosInvalidos(f"«seguridad.mfa_obligatorio» admite: {', '.join(NIVELES_MFA)}")
+    if clave == "entrega.indexacion":
+        from arca.modulos.entrega import indexacion  # noqa: PLC0415
+
+        try:
+            indexacion.validar(valor)
+        except ValueError as e:
+            raise DatosInvalidos(str(e)) from e
     if clave == "digitalizacion.perfil":
         from arca.modulos.m10_digitalizacion import perfil  # noqa: PLC0415
 

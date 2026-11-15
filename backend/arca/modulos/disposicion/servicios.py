@@ -82,7 +82,9 @@ def _datos(ctx, proyecto: Proyecto) -> dict[str, Any]:
     unidades = {u.id: u for u in ctx.db.scalars(select(UnidadDocumental).where(UnidadDocumental.proyecto_id == proyecto.id))}
     clasif = {c.unidad_id: c for c in ctx.db.scalars(select(ClasificacionUnidad).where(ClasificacionUnidad.proyecto_id == proyecto.id, ClasificacionUnidad.estado == "confirmada"))}
     elementos = {e.id: e for e in ctx.db.scalars(select(ElementoInstrumento).where(ElementoInstrumento.id.in_({c.elemento_id for c in clasif.values()})))} if clasif else {}
-    return {"unidades": unidades, "clasif": clasif, "elementos": elementos, "ocupadas": ocupadas(ctx, proyecto)}
+    from arca.modulos.historias.servicios import bases_de_retencion  # noqa: PLC0415 — historias laborales: desde el retiro
+
+    return {"unidades": unidades, "clasif": clasif, "elementos": elementos, "ocupadas": ocupadas(ctx, proyecto), "bases": bases_de_retencion(ctx, proyecto)}
 
 
 def _evaluar(d: dict[str, Any], u: UnidadDocumental, tipo: str, corte: date) -> dict[str, Any]:
@@ -105,7 +107,7 @@ def _evaluar(d: dict[str, Any], u: UnidadDocumental, tipo: str, corte: date) -> 
     if u.id in d["ocupadas"]:
         r["aviso"] = f"ya va en la {d['ocupadas'][u.id]}"
         return r
-    cal = calendario(u, e, corte)
+    cal = calendario(u, e, corte, desde=d.get("bases", {}).get(u.id))
     fin = cal["fin_central"]
     if fin is None and e.retencion_gestion is None and u.fecha_final:  # TVD sin tiempos: la disposición se aplica desde que se valoró
         fin = u.fecha_final

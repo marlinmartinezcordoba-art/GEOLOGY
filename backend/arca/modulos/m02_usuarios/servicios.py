@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from arca.modelos import Membresia, Proyecto, Rol, Usuario
-from arca.modelos.base import ahora_utc
+from arca.modelos.base import ahora_utc, en_utc
 from arca.modulos.m01_organizaciones.servicios import exigir_cupo, obtener_o_crear_usuario
 from arca.modulos.m25_auditoria.servicios import registrar
 from arca.nucleo.config import ajustes
@@ -331,3 +331,63 @@ def editar_rol(ctx, rol_id: uuid.UUID, descripcion: str | None, permisos: list[s
         ctx.auditar(accion="EDITAR_ROL", objeto="Rol", objeto_id=rol.id, motivo=motivo, cambios=cambios)
         db.commit()
     return rol
+
+
+# --- Correo: contraseñas temporales y recuperación (D-46) ---------------------------------------
+
+
+def entregar_temporal(correo_destino: str, nombre: str, temporal: str, organizacion: str, motivo: str) -> bool:
+    """Envía la contraseña temporal por correo. Si no hay correo configurado, devuelve False y se le muestra a quien administra."""
+    from arca.nucleo import correo  # noqa: PLC0415
+
+    return correo.enviar(correo_destino, f"ARCA · {motivo}", (
+        f"Hola, {nombre}.\n\n{motivo} en ARCA ({organizacion}).\n\nIngrese en {ajustes().url_publica}/ingresar con su correo y esta contraseña temporal:\n\n"
+        f"    {temporal}\n\nAl ingresar se le pedirá cambiarla. Si usted no esperaba este correo, avise al administrador de su organización.\n"))
+
+
+def solicitar_recuperacion(db: Session, correo_usuario: str, origen) -> None:
+    """Envía un enlace de un solo uso para restablecer la contraseña. La respuesta no revela si el correo existe."""
+    import hashlib  # noqa: PLC0415
+    import secrets  # noqa: PLC0415
+    from datetime import timedelta  # noqa: PLC0415
+
+    from arca.modelos import TokenRecuperacion  # noqa: PLC0415
+    from arca.nucleo import correo  # noqa: PLC0415
+
+    usuario = db.scalar(select(Usuario).where(Usuario.correo == correo_usuario.strip().lower()))
+    if usuario is None or not usuario.activo or not correo.configurado():
+        return
+    if usuario.bloqueado and usuario.motivo_bloqueo != "Bloqueo automático por intentos fallidos de ingreso":
+        return  # una cuenta bloqueada por el administrador no se desbloquea por correo
+    reciente = db.scalar(select(TokenRecuperacion.id).where(TokenRecuperacion.usuario_id == usuario.id, TokenRecuperacion.usado_en.is_(None),
+                                                            TokenRecuperacion.creado_en > ahora_utc() - timedelta(minutes=2)))
+    if reciente:
+        return  # no se reenvía en ráfaga
+    token = secrets.token_urlsafe(32)
+    minutos = ajustes().minutos_recuperacion
+    db.add(TokenRecuperacion(usuario_id=usuario.id, huella=hashlib.sha256(token.encode()).hexdigest(), creado_en=ahora_utc(),
+                             expira_en=ahora_utc() + timedelta(minutes=minutos)))
+    enviado = correo.enviar(usuario.correo, "ARCA · Restablecer su contraseña", (
+        f"Hola, {usuario.nombre_completo}.\n\nPara restablecer su contraseña de ARCA abra este enlace (vale {minutos} minutos y una sola vez):\n\n"
+        f"    {ajustes().url_publica}/restablecer?token={token}\n\nSi usted no lo pidió, ignore este correo: su contraseña sigue igual.\n"))
+    _evento_plataforma(db, usuario, "SOLICITAR_RECUPERACION", origen, detalle="enlace enviado por correo" if enviado else "no se pudo enviar el correo")
+    db.commit()
+
+
+def restablecer_con_token(db: Session, token: str, nueva: str, origen) -> None:
+    import hashlib  # noqa: PLC0415
+
+    from arca.modelos import TokenRecuperacion  # noqa: PLC0415
+
+    t = db.scalar(select(TokenRecuperacion).where(TokenRecuperacion.huella == hashlib.sha256(token.encode()).hexdigest()))
+    if t is None or t.usado_en is not None or en_utc(t.expira_en) < ahora_utc():
+        raise DatosInvalidos("El enlace no es válido o ya venció: pida uno nuevo")
+    usuario = db.get(Usuario, t.usuario_id)
+    validar_clave_nueva(nueva, usuario.correo)
+    usuario.clave_hash, usuario.debe_cambiar_clave, usuario.intentos_fallidos = hashear_clave(nueva), False, 0
+    if usuario.bloqueado and usuario.motivo_bloqueo == "Bloqueo automático por intentos fallidos de ingreso":
+        usuario.bloqueado, usuario.motivo_bloqueo = False, None
+    usuario.version_sesion += 1
+    t.usado_en = ahora_utc()
+    _evento_plataforma(db, usuario, "RESTABLECER_CLAVE_POR_CORREO", origen)
+    db.commit()

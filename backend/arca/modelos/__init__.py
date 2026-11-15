@@ -1,4 +1,4 @@
-from arca.modelos.alistamiento import IntervencionExpediente, PlanAlistamiento
+from arca.modelos.alistamiento import DiagnosticoExpediente, IntervencionExpediente, PlanAlistamiento
 from arca.modelos.auditoria import CadenaAuditoria, EventoAuditoria, SelloAuditoria
 from arca.modelos.base import Base
 from arca.modelos.captura import ArchivoDigital, EstadoLote, EstadoRecurso, FilaInventario, LoteInventario, RecursoDigital, UnidadDocumental
@@ -13,7 +13,7 @@ from arca.modelos.instrumentos import ClasificacionUnidad, ElementoInstrumento, 
 from arca.modelos.ocr import TextoPagina
 from arca.modelos.operacion import EstadoProyecto, MiembroProyecto, Parametro, Proyecto, Sede, UnidadMeta, VersionProyecto
 from arca.modelos.plantillas import Expedicion, Plantilla, VersionPlantilla
-from arca.modelos.plataforma import EstadoOrganizacion, Membresia, Organizacion, Rol, TipoIdentificacion, Usuario
+from arca.modelos.plataforma import EstadoOrganizacion, Membresia, Organizacion, Rol, TipoIdentificacion, TokenRecuperacion, Usuario
 from arca.modelos.productividad import (
     Actividad,
     CajaProyecto,
@@ -50,6 +50,7 @@ __all__ = [
     "PlanMuestreo",
     "IntervencionExpediente",
     "PlanAlistamiento",
+    "DiagnosticoExpediente",
     "ConfigHistorias",
     "TitularExpediente",
     "Trabajo",
@@ -95,5 +96,6 @@ __all__ = [
     "TipoIdentificacion",
     "UnidadMeta",
     "Usuario",
+    "TokenRecuperacion",
     "VersionProyecto",
 ]

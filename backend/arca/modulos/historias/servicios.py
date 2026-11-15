@@ -162,6 +162,23 @@ def restringidas(ctx, unidades: list[UnidadDocumental]) -> set[uuid.UUID]:
     return {u.id for u in unidades if (c := confs.get(u.proyecto_id)) and c.acceso_restringido and aplica(ctx, c, u)}
 
 
+def bases_de_retencion(ctx, proyecto: Proyecto) -> dict[uuid.UUID, Any]:
+    """Para cada historia laboral, desde cuándo se cuenta la retención: la fecha de retiro del titular confirmado, o
+    `SIN_RETIRO` si la persona sigue vinculada. Las unidades que no son historias laborales no aparecen."""
+    from arca.modulos.m04_instrumentos.clasificacion import SIN_RETIRO  # noqa: PLC0415
+
+    conf = config_de(ctx, proyecto)
+    if conf is None or not conf.activo:
+        return {}
+    titulares = {t.unidad_id: t for t in ctx.db.scalars(select(TitularExpediente).where(TitularExpediente.proyecto_id == proyecto.id, TitularExpediente.estado == "confirmado"))}
+    salida: dict[uuid.UUID, Any] = {}
+    for uid, t in titulares.items():
+        u = ctx.db.get(UnidadDocumental, uid)
+        if aplica(ctx, conf, u):
+            salida[uid] = t.fecha_retiro or SIN_RETIRO
+    return salida
+
+
 # --- Titular ----------------------------------------------------------------------------------
 
 

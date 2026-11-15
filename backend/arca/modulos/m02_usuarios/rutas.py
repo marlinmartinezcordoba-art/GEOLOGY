@@ -2,13 +2,14 @@
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from arca.api.deps import Contexto, Ctx, Origen, Sesion, UsuarioSesion, membresias_vigentes, requiere
+from arca.modelos import Usuario
 from arca.modulos.m02_usuarios import servicios
 from arca.nucleo.permisos import TODOS, Permiso
 
@@ -53,6 +54,7 @@ class MembresiaResumen(BaseModel):
     organizacion: str
     rol: str
     permisos: list[str]
+    mfa_exigido: bool = False
 
 
 class Yo(BaseModel):
@@ -99,7 +101,8 @@ class PersonaDirectorio(BaseModel):
 
 class UsuarioAgregado(BaseModel):
     miembro: MiembroSalida
-    clave_temporal: str | None = Field(description="Solo si la cuenta es nueva. Se muestra una única vez.")
+    clave_temporal: str | None = Field(description="Solo si la cuenta es nueva y no se pudo enviar por correo. Se muestra una única vez.")
+    enviada_por_correo: bool = False
 
 
 class RolNuevo(BaseModel):
@@ -167,9 +170,12 @@ def token(form: Annotated[OAuth2PasswordRequestForm, Depends()], db: Sesion, ori
 
 
 @auth.get("/yo", response_model=Yo)
-def yo(usuario: UsuarioSesion):
+def yo(usuario: UsuarioSesion, db: Sesion):
+    from arca.modulos.m03_configuracion.servicios import mfa_exigido  # noqa: PLC0415
+
     organizaciones = [
-        MembresiaResumen(organizacion_id=m.tenant_id, organizacion=m.organizacion.nombre, rol=m.rol.nombre, permisos=sorted(m.rol.permisos))
+        MembresiaResumen(organizacion_id=m.tenant_id, organizacion=m.organizacion.nombre, rol=m.rol.nombre, permisos=sorted(m.rol.permisos),
+                         mfa_exigido=mfa_exigido(db, m))
         for m in membresias_vigentes(usuario)
     ]
     return Yo(
@@ -228,7 +234,8 @@ def directorio(ctx: Ctx):
 @usuarios.post("", status_code=status.HTTP_201_CREATED, response_model=UsuarioAgregado)
 def agregar_usuario(datos: UsuarioNuevo, ctx: Administrador):
     m, temporal = servicios.agregar_usuario(ctx, datos.correo, datos.nombre_completo, datos.rol_id, datos.proyectos)
-    return UsuarioAgregado(miembro=_miembro(m), clave_temporal=temporal)
+    enviada = bool(temporal) and servicios.entregar_temporal(m.usuario.correo, m.usuario.nombre_completo, temporal, ctx.organizacion.nombre, "Le crearon una cuenta")
+    return UsuarioAgregado(miembro=_miembro(m), clave_temporal=None if enviada else temporal, enviada_por_correo=enviada)
 
 
 @usuarios.patch("/{usuario_id}", response_model=MiembroSalida)
@@ -253,8 +260,32 @@ def revocar_sesiones(usuario_id: uuid.UUID, datos: Motivo, ctx: Administrador):
 
 
 @usuarios.post("/{usuario_id}/restablecer-clave")
-def restablecer_clave(usuario_id: uuid.UUID, datos: Motivo, ctx: Administrador) -> dict[str, str]:
-    return {"clave_temporal": servicios.restablecer_clave(ctx, usuario_id, datos.motivo)}
+def restablecer_clave(usuario_id: uuid.UUID, datos: Motivo, ctx: Administrador) -> dict[str, Any]:
+    temporal = servicios.restablecer_clave(ctx, usuario_id, datos.motivo)
+    u = ctx.db.get(Usuario, usuario_id)
+    enviada = servicios.entregar_temporal(u.correo, u.nombre_completo, temporal, ctx.organizacion.nombre, "Le restablecieron la contraseña")
+    return {"clave_temporal": None if enviada else temporal, "enviada_por_correo": enviada}
+
+
+class Recuperacion(BaseModel):
+    correo: EmailStr
+
+
+class Restablecimiento(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    clave_nueva: str = Field(min_length=1, max_length=200)
+
+
+@auth.post("/recuperar")
+def recuperar(datos: Recuperacion, db: Sesion, origen: Origen) -> dict[str, str]:
+    """Pide un enlace para restablecer la contraseña. Siempre responde lo mismo, exista o no la cuenta."""
+    servicios.solicitar_recuperacion(db, datos.correo, origen)
+    return {"mensaje": "Si el correo está registrado y la plataforma tiene correo configurado, le enviamos un enlace para restablecer la contraseña."}
+
+
+@auth.post("/restablecer", status_code=status.HTTP_204_NO_CONTENT)
+def restablecer(datos: Restablecimiento, db: Sesion, origen: Origen):
+    servicios.restablecer_con_token(db, datos.token, datos.clave_nueva, origen)
 
 
 # --- Roles ------------------------------------------------------------------------------------

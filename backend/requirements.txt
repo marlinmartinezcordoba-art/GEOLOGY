@@ -10,4 +10,7 @@ pwdlib[argon2]>=0.2
 python-multipart>=0.0.18
 openpyxl>=3.1
 pikepdf[pdfa]>=10.18
+cryptography>=44
+boto3>=1.35
+reportlab>=4.2
 Pillow>=11

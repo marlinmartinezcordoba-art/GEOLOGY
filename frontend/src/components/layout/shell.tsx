@@ -152,7 +152,7 @@ function BarraLateral({ alNavegar }: { alNavegar?: () => void }) {
         <LogoArca claro />
       </div>
       <Navegacion alNavegar={alNavegar} />
-      <p className="mx-3 mt-auto text-[11px] leading-relaxed text-profundo-texto/70">La IA propone, su equipo valida y ARCA lo deja registrado.</p>
+      <p className="mx-3 mt-auto text-[11px] leading-relaxed text-profundo-texto/70">ARCA propone, su equipo valida y todo queda registrado.</p>
     </>
   );
 }

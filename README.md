@@ -31,9 +31,20 @@ autorización y trazabilidad.
 | **Alistamiento físico** | Actividades de alistamiento del proyecto (depuración, ordenación cronológica, foliación, material abrasivo, carpeta, rotulación) registradas por caja o por expediente con quién y cuándo; avance por caja, conteo automático en productividad, avisos en la hoja de control y exigencia para la entrega | **Construido.** Ficha: [`docs/fichas/ALISTAMIENTO_FISICO.md`](docs/fichas/ALISTAMIENTO_FISICO.md) |
 | **Historias laborales** | Titular de cada expediente propuesto desde el FUID o el OCR y confirmado por una persona; páginas con el número de documento de otra persona, tipos documentales mínimos que faltan, orden cronológico y titulares repetidos; búsqueda por número de documento; FUID y rótulos con el titular, lista de chequeo en el formato de la entidad y acceso restringido | **Construido.** Ficha: [`docs/fichas/HISTORIAS_LABORALES.md`](docs/fichas/HISTORIAS_LABORALES.md) |
 | **Inspección de calidad por lote** | Plan de muestreo de la dirección, muestra al azar con semilla registrada, defectos por severidad, aceptación o rechazo calculados según el plan, reinspección, acta y registro de calidad para el tablero; el paquete de entrega puede exigir lotes aceptados | **Construido.** Ficha: [`docs/fichas/INSPECCION_CALIDAD_POR_LOTE.md`](docs/fichas/INSPECCION_CALIDAD_POR_LOTE.md) |
-| Siguiente | Validación externa con veraPDF, documentos expedidos en PDF con logos, despliegue en servidor (PostgreSQL, almacenamiento S3, cifrado) | Pendiente |
+| **Operación en servidor** | Contenedores (API con OCR, trabajador, interfaz, PostgreSQL, HTTPS con Caddy, MinIO opcional), almacén local o S3 con cifrado AES-256-GCM obligatorio en producción, copias y restauración, `/estado` con alertas, prueba de carga medida | **Construido.** Ficha: [`docs/fichas/OPERACION_EN_SERVIDOR.md`](docs/fichas/OPERACION_EN_SERVIDOR.md) |
+| **Seguridad de las cuentas** | Verificación en dos pasos obligatoria por nivel, correo saliente para contraseñas temporales y recuperación de la contraseña con enlace de un solo uso | **Construido.** Ficha: [`docs/fichas/SEGURIDAD_DE_CUENTAS.md`](docs/fichas/SEGURIDAD_DE_CUENTAS.md) |
+| **Informes, PDF e indexación** | Logo de la entidad, entregables en PDF/A-2b, informe de avance para la interventoría (PDF/A o Excel) y archivo de indexación configurable para el SGDEA | **Construido.** Ficha: [`docs/fichas/INFORMES_PDF_E_INDEXACION.md`](docs/fichas/INFORMES_PDF_E_INDEXACION.md) |
+| Siguiente | Validación externa con veraPDF sobre una muestra; medir el OCR con documentos reales anonimizados; inteligencia artificial (cuando se decida el proveedor) | Pendiente |
 
-Hay 157 pruebas automáticas en el backend. La meta de 500.000 imágenes diarias es un objetivo de diseño. No es una capacidad demostrada.
+Hay 171 pruebas automáticas en el backend. La meta de 500.000 imágenes diarias es un objetivo de diseño. No es una capacidad demostrada.
+
+## Manual de usuario
+
+Qué hace cada rol y en qué pantalla: [`docs/MANUAL_DE_USUARIO.md`](docs/MANUAL_DE_USUARIO.md).
+
+## Ponerlo en un servidor
+
+`cd despliegue && cp .env.ejemplo .env`, complete el `.env` (los comandos para generar los secretos están en el archivo) y `docker compose up -d --build`. Detalle, copias de seguridad, monitoreo y capacidad: [`docs/fichas/OPERACION_EN_SERVIDOR.md`](docs/fichas/OPERACION_EN_SERVIDOR.md).
 
 ## Probarlo en local
 

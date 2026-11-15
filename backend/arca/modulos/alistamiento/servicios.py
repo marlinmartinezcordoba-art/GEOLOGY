@@ -21,7 +21,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from arca.modelos import EstadoProyecto, IntervencionExpediente, PlanAlistamiento, Proyecto, UnidadDocumental, Usuario
+from arca.modelos import DiagnosticoExpediente, EstadoProyecto, IntervencionExpediente, PlanAlistamiento, Proyecto, UnidadDocumental, Usuario
 from arca.modelos.base import ahora_utc
 from arca.modulos.m08_inventarios.fuid import clave_de
 from arca.nucleo.errores import DatosInvalidos, NoEncontrado, TransicionInvalida
@@ -197,12 +197,15 @@ def folios_registrados(ctx, u: UnidadDocumental) -> int | None:
 def avisos_hoja(ctx, u: UnidadDocumental, total_folios: int | None) -> list[str]:
     proyecto = ctx.db.get(Proyecto, u.proyecto_id)
     plan = plan_de(ctx, proyecto)
-    if plan is None:
-        return []
     avisos = []
-    faltan = pendientes_de(ctx, proyecto, u, plan)
+    faltan = pendientes_de(ctx, proyecto, u, plan) if plan else []
     if faltan:
         avisos.append(f"alistamiento físico pendiente: {', '.join(faltan)}")
+    d = diagnostico_de(ctx, u)
+    if d and d.estado != "bueno":
+        aislar = any(HALLAZGOS[h][1] for h in d.hallazgos)
+        avisos.append(f"conservación {ESTADOS_CONSERVACION[d.estado].lower()}: {', '.join(HALLAZGOS[h][0].lower() for h in d.hallazgos) or 'ver la observación'}"
+                      + (" · AISLAR el expediente por deterioro biológico" if aislar else ""))
     folios = folios_registrados(ctx, u)
     if folios is not None and total_folios and folios != total_folios:
         avisos.append(f"la foliación del alistamiento registró {folios} folios y la hoja de control suma {total_folios}")
@@ -227,7 +230,10 @@ def cajas(ctx, proyecto: Proyecto) -> dict[str, Any]:
             c["completos"] += 1
     filas = sorted(por_caja.values(), key=lambda x: (clave_de(x["caja"]) if x["caja"] else "~"))
     total = sum(c["expedientes"] for c in filas)
+    diagnosticos = list(ctx.db.scalars(select(DiagnosticoExpediente).where(DiagnosticoExpediente.proyecto_id == proyecto.id)))
     resumen = {"expedientes": total, "completos": sum(c["completos"] for c in filas),
+               "diagnostico": {"registrados": len(diagnosticos), **{e: sum(1 for d in diagnosticos if d.estado == e) for e in ESTADOS_CONSERVACION},
+                               "aislar": sum(1 for d in diagnosticos if any(HALLAZGOS[h][1] for h in d.hallazgos))},
                "por_actividad": {a["codigo"]: sum(c["hechas"][a["codigo"]] for c in filas) for a in actividades}}
     return {"actividades": actividades, "resumen": resumen, "cajas": filas}
 
@@ -235,6 +241,7 @@ def cajas(ctx, proyecto: Proyecto) -> dict[str, Any]:
 def expedientes(ctx, proyecto: Proyecto, caja: str) -> list[dict[str, Any]]:
     """Los expedientes de una caja con lo que tiene hecho cada uno (quién, cuándo, cantidad)."""
     hechas = _hechas(ctx, proyecto)
+    diagnosticos = {d.unidad_id: d for d in ctx.db.scalars(select(DiagnosticoExpediente).where(DiagnosticoExpediente.proyecto_id == proyecto.id))}
     quienes = {u.id: u.nombre_completo for u in ctx.db.scalars(select(Usuario).where(Usuario.id.in_(
         {i.hecho_por for h in hechas.values() for i in h.values() if i.hecho_por})))} if hechas else {}
     clave = clave_de(caja) if caja else ""
@@ -244,6 +251,7 @@ def expedientes(ctx, proyecto: Proyecto, caja: str) -> list[dict[str, Any]]:
             continue
         h = hechas.get(u.id, {})
         salida.append({"unidad_id": u.id, "identificador": u.identificador, "nombre": u.nombre, "carpeta": u.carpeta, "folios_fuid": u.folios,
+                       "diagnostico": diagnostico_dict(diagnosticos.get(u.id)),
                        "hechas": {k: {"cantidad": i.cantidad, "observacion": i.observacion, "hecho_en": i.hecho_en, "hecho_por": quienes.get(i.hecho_por)} for k, i in h.items()}})
     return salida
 
@@ -257,3 +265,63 @@ def eventos_productividad(ctx, proyecto: Proyecto, fuente: str) -> list[tuple[An
     filas = ctx.db.execute(select(IntervencionExpediente.hecho_en, IntervencionExpediente.cantidad).where(
         IntervencionExpediente.proyecto_id == proyecto.id, IntervencionExpediente.actividad == codigo)).all()
     return [(h, (c or 0) if sumar else 1) for h, c in filas]
+
+
+# --- Diagnóstico de conservación --------------------------------------------------------------
+
+ESTADOS_CONSERVACION = {"bueno": "Bueno", "regular": "Regular", "malo": "Malo"}
+HALLAZGOS = {
+    "biologico": ("Deterioro biológico (hongos, insectos, roedores)", True),
+    "humedad": ("Manchas o daño por humedad", False),
+    "rasgaduras": ("Rasgaduras o faltantes de soporte", False),
+    "folios_faltantes": ("Folios faltantes", False),
+    "folios_sueltos": ("Folios sueltos o desordenados", False),
+    "oxido": ("Material metálico oxidado", False),
+    "adhesivos": ("Cintas o adhesivos", False),
+    "tinta_desvanecida": ("Tinta desvanecida o ilegible", False),
+    "termico": ("Papel térmico o fotocopia que se borra", False),
+    "fuego": ("Daño por fuego o calor", False),
+    "otro": ("Otro (ver la observación)", False),
+}  # código → (nombre, si exige aislar el expediente)
+
+
+def diagnosticar(ctx, proyecto: Proyecto, unidad_id: uuid.UUID, estado: str, hallazgos: list[str], folios_afectados: int | None, observacion: str) -> DiagnosticoExpediente:
+    """Registra (o corrige) el diagnóstico. Lo biológico exige aislar el expediente y se avisa en la hoja y en el avance."""
+    _abierto(proyecto)
+    u = ctx.db.get(UnidadDocumental, unidad_id)
+    if u is None or u.proyecto_id != proyecto.id:
+        raise NoEncontrado("La unidad no es del proyecto")
+    if estado not in ESTADOS_CONSERVACION:
+        raise DatosInvalidos("El estado de conservación es «bueno», «regular» o «malo»")
+    desconocidos = [h for h in hallazgos if h not in HALLAZGOS]
+    if desconocidos:
+        raise DatosInvalidos(f"Hallazgos desconocidos: {', '.join(desconocidos)}")
+    if "otro" in hallazgos and not observacion.strip():
+        raise DatosInvalidos("Con el hallazgo «Otro», describa en la observación qué se encontró")
+    if estado == "bueno" and hallazgos:
+        raise DatosInvalidos("Un expediente en buen estado no lleva hallazgos: marque «regular» o «malo»")
+    d = ctx.db.scalar(select(DiagnosticoExpediente).where(DiagnosticoExpediente.unidad_id == u.id))
+    if d is None:
+        d = DiagnosticoExpediente(tenant_id=ctx.tenant_id, proyecto_id=proyecto.id, unidad_id=u.id)
+        ctx.db.add(d)
+    d.estado, d.hallazgos, d.folios_afectados, d.observacion = estado, list(dict.fromkeys(hallazgos)), folios_afectados, observacion.strip()[:2000]
+    d.registrado_en, d.registrado_por = ahora_utc(), ctx.usuario.id
+    ctx.auditar(accion="DIAGNOSTICAR_CONSERVACION", objeto="UnidadDocumental", objeto_id=u.id,
+                detalle=f"{u.identificador} · {ESTADOS_CONSERVACION[estado]}" + (f" · {', '.join(HALLAZGOS[h][0] for h in d.hallazgos)}" if d.hallazgos else ""))
+    ctx.db.commit()
+    return d
+
+
+def diagnostico_dict(d: DiagnosticoExpediente | None) -> dict[str, Any] | None:
+    if d is None:
+        return None
+    return {"estado": d.estado, "hallazgos": d.hallazgos, "nombres": [HALLAZGOS[h][0] for h in d.hallazgos], "folios_afectados": d.folios_afectados,
+            "observacion": d.observacion, "aislar": any(HALLAZGOS[h][1] for h in d.hallazgos), "registrado_en": d.registrado_en}
+
+
+def diagnostico_de(ctx, u: UnidadDocumental) -> DiagnosticoExpediente | None:
+    return ctx.db.scalar(select(DiagnosticoExpediente).where(DiagnosticoExpediente.unidad_id == u.id))
+
+
+def catalogo_diagnostico() -> dict[str, Any]:
+    return {"estados": ESTADOS_CONSERVACION, "hallazgos": {k: {"nombre": v[0], "aislar": v[1]} for k, v in HALLAZGOS.items()}}

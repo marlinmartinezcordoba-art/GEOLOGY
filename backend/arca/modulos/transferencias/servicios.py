@@ -73,7 +73,9 @@ def _contexto(ctx, proyecto: Proyecto) -> dict[str, Any]:
 
     for uid, donde in en_disposicion(ctx, proyecto).items():
         ocupadas.setdefault(uid, f"el {donde}")
-    return {"unidades": unidades, "clasif": clasif, "elementos": elementos, "deps": deps, "ocupadas": ocupadas}
+    from arca.modulos.historias.servicios import bases_de_retencion  # noqa: PLC0415 — historias laborales: desde el retiro
+
+    return {"unidades": unidades, "clasif": clasif, "elementos": elementos, "deps": deps, "ocupadas": ocupadas, "bases": bases_de_retencion(ctx, proyecto)}
 
 
 def _evaluar(datos: dict[str, Any], u: UnidadDocumental, tipo: str, corte: date) -> dict[str, Any]:
@@ -93,12 +95,14 @@ def _evaluar(datos: dict[str, Any], u: UnidadDocumental, tipo: str, corte: date)
         r["aviso"] = f"ya va en {datos['ocupadas'][u.id]}"
         return r
     r["puede"] = True
-    cal = calendario(u, e, corte)
+    cal = calendario(u, e, corte, desde=datos["bases"].get(u.id))
     if tipo == "secundaria" and e.disposicion not in AL_HISTORICO:
         r["puede"], r["aviso"] = False, f"su disposición final es {cal['disposicion'] or 'desconocida'}: no va al archivo histórico"
         return r
     fin = cal["fin_gestion"] if tipo == "primaria" else cal["fin_central"]
-    if fin is None:
+    if cal.get("base") == "retiro" and cal["fin_gestion"] is None:
+        r["aviso"] = "historia laboral abierta: la persona sigue vinculada (sin fecha de retiro)"
+    elif fin is None:
         r["aviso"] = "sin fecha final o sin tiempos de retención: no se puede saber si cumplió"
     elif fin > corte:
         r["aviso"] = f"anticipada: su retención en {'gestión' if tipo == 'primaria' else 'central'} termina el {fin.isoformat()}"

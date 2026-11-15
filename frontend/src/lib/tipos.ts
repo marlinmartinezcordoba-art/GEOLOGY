@@ -1,6 +1,6 @@
 /** Contratos de la API de ARCA (Etapa 1). Mismos nombres de campo que el backend. */
 
-export type MembresiaResumen = { organizacion_id: string; organizacion: string; rol: string; permisos: string[] };
+export type MembresiaResumen = { organizacion_id: string; organizacion: string; rol: string; permisos: string[]; mfa_exigido?: boolean };
 
 export type Yo = {
   id: string;
@@ -364,10 +364,12 @@ export type ExpedienteHistoria = {
 export type ActividadAlistamiento = { codigo: string; nombre: string; cantidad: "ninguna" | "folios" | "unidades"; obligatoria: boolean };
 export type PlanAlistamientoVista = { vigente: boolean; actividades: ActividadAlistamiento[]; exigir_para_entrega: boolean; version?: number; motivo?: string; aviso?: string };
 export type AvanceAlistamiento = {
-  actividades: ActividadAlistamiento[]; resumen: { expedientes: number; completos: number; por_actividad: Record<string, number> };
+  actividades: ActividadAlistamiento[];
+  resumen: { expedientes: number; completos: number; por_actividad: Record<string, number>; diagnostico: { registrados: number; bueno: number; regular: number; malo: number; aislar: number } };
   cajas: { caja: string; expedientes: number; hechas: Record<string, number>; completos: number }[];
 };
+export type DiagnosticoConservacion = { estado: "bueno" | "regular" | "malo"; hallazgos: string[]; nombres: string[]; folios_afectados: number | null; observacion: string; aislar: boolean };
 export type ExpedienteAlistamiento = {
-  unidad_id: string; identificador: string; nombre: string; carpeta: string | null; folios_fuid: number | null;
+  unidad_id: string; identificador: string; nombre: string; carpeta: string | null; folios_fuid: number | null; diagnostico: DiagnosticoConservacion | null;
   hechas: Record<string, { cantidad: number | null; observacion: string; hecho_en: string; hecho_por: string | null }>;
 };
