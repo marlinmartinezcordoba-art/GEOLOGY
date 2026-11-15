@@ -47,6 +47,7 @@ from arca.modelos import (
 from arca.modelos.base import ahora_utc
 from arca.modelos.transferencias import FASES
 from arca.modulos.entrega import pdfa
+from arca.modulos.historias import servicios as historias
 from arca.modulos.inspeccion import servicios as inspeccion
 from arca.modulos.m08_inventarios.fuid import clave_de
 from arca.modulos.m08_inventarios.servicios import guardar_archivo
@@ -151,6 +152,7 @@ def _metadatos(ctx, proyecto: Proyecto, u: UnidadDocumental, pags: list[dict[str
                    "caja": u.caja, "carpeta": u.carpeta, "tomo": u.tomo, "folios_inventario": u.folios, "soporte": u.soporte, "notas": u.notas,
                    "fase": FASES.get(u.fase, u.fase), "disposicion_aplicada": u.disposicion_aplicada, "lote": caja.lote if caja else ""},
         "clasificacion": clas,
+        "titular": historias.como_dict(historias.titular_de(ctx, u)),
         "hoja_control": None if not h else {"total_folios": h.total_folios, "imagenes_por_folio": h.imagenes_por_folio, "verificada_en": h.verificada_en.isoformat() if h.verificada_en else None, "documentos": tramites},
         "descripcion_isadg": d.campos if d else None,
         "digitalizacion": {"paginas": len(pags), "originales": originales},

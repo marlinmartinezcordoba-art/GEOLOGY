@@ -5,6 +5,7 @@ from arca.modelos.consulta import EntradaIndice, IndiceUnidad
 from arca.modelos.descripcion import ConfiguracionLote, DescripcionUnidad
 from arca.modelos.disposicion import ElementoDisposicion, ProcesoDisposicion
 from arca.modelos.flujo import FlujoUnidad, PaqueteEntrega, Trabajo
+from arca.modelos.historias import ConfigHistorias, TitularExpediente
 from arca.modelos.hoja_control import HojaControl, TramiteHoja
 from arca.modelos.inspeccion import InspeccionLote, ItemInspeccion, PlanMuestreo
 from arca.modelos.instrumentos import ClasificacionUnidad, ElementoInstrumento, Instrumento, VersionInstrumento
@@ -46,6 +47,8 @@ __all__ = [
     "InspeccionLote",
     "ItemInspeccion",
     "PlanMuestreo",
+    "ConfigHistorias",
+    "TitularExpediente",
     "Trabajo",
     "MovimientoFase",
     "Transferencia",

@@ -347,3 +347,16 @@ export type DetalleInspeccion = {
   reinspeccion_de: string | null; observaciones: string; creado_en: string; creado_por: string | null; cerrada_en: string | null; cerrada_por: string | null;
   conteo: { critico: number; mayor: number; menor: number; limitacion: number }; revisados: number; resultado_previsto: string; razones: string[]; items: ItemMuestra[];
 };
+
+export type ConfigHistorias = {
+  configurado: boolean; activo: boolean; series: string[]; tipos_obligatorios: string[]; motivo?: string; tipos_de_la_trd: string[]; aviso: string; tipos_documento: Record<string, string>;
+};
+export type TitularHistoria = {
+  tipo_documento: string; numero_documento: string; nombres: string; cargo: string; dependencia: string; fecha_vinculacion: string | null; fecha_retiro: string | null;
+  estado: "propuesto" | "confirmado"; origen: Record<string, { fuente: string; detalle: string }>; confirmado_en: string | null;
+};
+export type ExpedienteHistoria = {
+  unidad_id: string; identificador: string; nombre: string; caja: string | null; titular: TitularHistoria | null;
+  completitud: { obligatorios: number; presentes: number; faltan: string[]; hoja: string | null }; documentos_encontrados: { numero: string; paginas: number[] }[];
+  paginas_leidas: number; alertas: { clase: string; paginas: number[]; mensaje: string }[];
+};

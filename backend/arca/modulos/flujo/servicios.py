@@ -99,6 +99,12 @@ def paso(ctx, proyecto: Proyecto, u: UnidadDocumental) -> dict[str, Any]:
             hechos.append(f"OCR de {r['procesadas']} páginas")
             if not r["pendientes"]:
                 hechos.extend(hoja.legibilidad(ctx, pags))
+                from arca.modulos.historias import servicios as historias  # noqa: PLC0415
+
+                if historias.aplica(ctx, historias.config_de(ctx, proyecto), u):
+                    t = historias.proponer(ctx, proyecto, u)
+                    if t is not None and t.estado == "propuesto":
+                        hechos.append(f"titular propuesto: {t.tipo_documento} {t.numero_documento or '—'} · {t.nombres or '—'}")
         if r["pendientes"]:
             return fin("ocr", f"Leídas {r['paginas'] - r['pendientes']} de {r['paginas']} páginas", seguir=True)
         ocr_completo = True

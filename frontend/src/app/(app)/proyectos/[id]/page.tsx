@@ -23,6 +23,7 @@ import { Digitalizacion } from "./digitalizacion";
 import { Disposicion } from "./disposicion";
 import { Entregables } from "./entregables";
 import { Flujo } from "./flujo";
+import { Historias } from "./historias";
 import { HojasControl } from "./hojas";
 import { Inspeccion } from "./inspeccion";
 import { Instrumentos } from "./instrumentos";
@@ -30,7 +31,7 @@ import { Inventario } from "./inventario";
 import { Productividad } from "./productividad";
 import { Transferencias } from "./transferencias";
 
-type Pestana = "resumen" | "productividad" | "instrumentos" | "clasificacion" | "transferencias" | "disposicion" | "hojas" | "descripcion" | "flujo" | "inventario" | "digitalizacion" | "entregables" | "sedes" | "equipo" | "versiones" | "inspeccion";
+type Pestana = "resumen" | "productividad" | "instrumentos" | "clasificacion" | "transferencias" | "disposicion" | "hojas" | "descripcion" | "flujo" | "inventario" | "digitalizacion" | "entregables" | "sedes" | "equipo" | "versiones" | "inspeccion" | "historias";
 type Transicion = { ruta: "activar" | "cerrar" | "reabrir"; titulo: string; boton: string; peligro?: boolean; descripcion: string };
 
 const TRANSICIONES: Record<string, Transicion[]> = {
@@ -120,6 +121,7 @@ export default function DetalleProyecto() {
                     { valor: "flujo" as const, etiqueta: "Flujo automático" },
                     { valor: "inventario" as const, etiqueta: "Inventario FUID" },
                     { valor: "clasificacion" as const, etiqueta: "Clasificación" },
+                    { valor: "historias" as const, etiqueta: "Historias laborales" },
                     { valor: "hojas" as const, etiqueta: "Hoja de control" },
                     ...(conIsadg ? [{ valor: "descripcion" as const, etiqueta: "Descripción ISAD(G)" }] : []),
                     { valor: "transferencias" as const, etiqueta: "Transferencias" },
@@ -178,6 +180,7 @@ export default function DetalleProyecto() {
         {pestana === "instrumentos" && <Instrumentos proyecto={p} />}
         {pestana === "inventario" && <Inventario proyecto={p} />}
         {pestana === "clasificacion" && <Clasificacion proyecto={p} />}
+        {pestana === "historias" && <Historias proyecto={p} />}
         {pestana === "hojas" && <HojasControl proyecto={p} />}
         {pestana === "flujo" && <Flujo proyecto={p} />}
         {pestana === "descripcion" && <Descripciones proyecto={p} />}

@@ -32,6 +32,7 @@ from arca.modelos import (
     Proyecto,
     RecursoDigital,
     TextoPagina,
+    TitularExpediente,
     TramiteHoja,
     UnidadDocumental,
     VersionInstrumento,
@@ -92,7 +93,8 @@ def _firmas(ctx, proyecto: Proyecto) -> dict[uuid.UUID, str]:
         .where(RecursoDigital.proyecto_id == pid, RecursoDigital.estado.not_in(NO_CUENTAN)).group_by(RecursoDigital.unidad_id)).all()}
     hojas = {uid: f"{e}:{v}" for uid, e, v in ctx.db.execute(select(HojaControl.unidad_id, HojaControl.estado, HojaControl.verificada_en).where(HojaControl.proyecto_id == pid)).all()}
     descs = {uid: f"{e}:{a}" for uid, e, a in ctx.db.execute(select(DescripcionUnidad.unidad_id, DescripcionUnidad.estado, DescripcionUnidad.aprobada_en).where(DescripcionUnidad.proyecto_id == pid)).all()}
-    return {uid: f"{act}|{clas.get(uid)}|{ocr.get(uid)}|{hojas.get(uid)}|{descs.get(uid)}"[:300]
+    titulares = dict(ctx.db.execute(select(TitularExpediente.unidad_id, TitularExpediente.actualizado_en).where(TitularExpediente.proyecto_id == pid)).all())
+    return {uid: f"{act}|{clas.get(uid)}|{ocr.get(uid)}|{hojas.get(uid)}|{descs.get(uid)}|{titulares.get(uid)}"[:300]
             for uid, act in ctx.db.execute(select(UnidadDocumental.id, UnidadDocumental.actualizado_en).where(UnidadDocumental.proyecto_id == pid)).all()}
 
 
@@ -112,6 +114,9 @@ def indexar_unidad(ctx, u: UnidadDocumental) -> None:
             u.fecha_inicial.isoformat() if u.fecha_inicial else "", u.fecha_final.isoformat() if u.fecha_final else ""]
     if c:
         meta += [c["e"].codigo, c["e"].nombre, c["serie"], c["e"].codigo_dependencia, c["dependencia"]]
+    titular = ctx.db.scalar(select(TitularExpediente).where(TitularExpediente.unidad_id == u.id))
+    if titular:  # historia laboral: se busca por el número de documento y el nombre de la persona
+        meta += [f"{titular.tipo_documento} {titular.numero_documento}", titular.nombres, titular.cargo, titular.dependencia]
     _entrada(ctx, u, "metadatos", FUENTES["metadatos"], " · ".join(str(x) for x in meta if x), reservada)
     orden = {(p["recurso_id"], p["pagina_en_archivo"]): p["n"] for p in paginas(ctx, u)}
     if orden:

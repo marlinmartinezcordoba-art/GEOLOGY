@@ -152,7 +152,7 @@ def agregar_usuario(cliente, org: Org, correo: str, rol: str, proyectos: list[st
 def proyecto_basico(cliente, org: Org, codigo: str = "P-001", **extra) -> dict:
     cuerpo = {
         "codigo": codigo,
-        "nombre": f"Organización fondo acumulado {codigo}",
+        "nombre": f"Digitalización masiva e historias laborales {codigo}",
         "entidad_cliente": "Entidad Ficticia",
         "numero_contrato": "CT-001-2026",
     } | extra

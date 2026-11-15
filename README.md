@@ -28,10 +28,11 @@ autorización y trazabilidad.
 | **M23 Consulta** | Búsqueda sin tildes en metadatos, OCR, hoja verificada y descripción aprobada, con filtros, fragmentos y exportación; ficha del expediente con visor; acceso según la TRD y alcance por proyecto (también para la entidad cliente) | **Construido.** Ficha: [`docs/fichas/M23_CONSULTA.md`](docs/fichas/M23_CONSULTA.md) |
 | **Flujo automático** | Al cargar, calidad → OCR → hoja de control → descripción sin intervención, hasta donde decide una persona; cola de trabajos en la base de datos con trabajador en la aplicación o aparte; tablero por etapa | **Construido.** Ficha: [`docs/fichas/FLUJO_AUTOMATICO.md`](docs/fichas/FLUJO_AUTOMATICO.md) |
 | **Automatización y paquete de entrega** | Metadatos de cada documento desde el OCR (asunto, remitente, destinatario, firmantes, lugar), páginas giradas enderezadas, avisos de legibilidad, FUID con folios contados, productividad contada sola y paquete digital para el SGDEA (PDF/A-2b validado con texto buscable, metadatos, hoja y manifiesto de huellas); validador PDF/A para cualquier PDF | **Construido.** Ficha: [`docs/fichas/AUTOMATIZACION_Y_PAQUETE_DE_ENTREGA.md`](docs/fichas/AUTOMATIZACION_Y_PAQUETE_DE_ENTREGA.md) |
+| **Historias laborales** | Titular de cada expediente propuesto desde el FUID o el OCR y confirmado por una persona; páginas con el número de documento de otra persona, tipos documentales mínimos que faltan, orden cronológico y titulares repetidos; búsqueda por número de documento | **Construido.** Ficha: [`docs/fichas/HISTORIAS_LABORALES.md`](docs/fichas/HISTORIAS_LABORALES.md) |
 | **Inspección de calidad por lote** | Plan de muestreo de la dirección, muestra al azar con semilla registrada, defectos por severidad, aceptación o rechazo calculados según el plan, reinspección, acta y registro de calidad para el tablero; el paquete de entrega puede exigir lotes aceptados | **Construido.** Ficha: [`docs/fichas/INSPECCION_CALIDAD_POR_LOTE.md`](docs/fichas/INSPECCION_CALIDAD_POR_LOTE.md) |
 | Siguiente | Validación externa con veraPDF, documentos expedidos en PDF con logos, despliegue en servidor (PostgreSQL, almacenamiento S3, cifrado) | Pendiente |
 
-Hay 152 pruebas automáticas en el backend. La meta de 500.000 imágenes diarias es un objetivo de diseño. No es una capacidad demostrada.
+Hay 155 pruebas automáticas en el backend. La meta de 500.000 imágenes diarias es un objetivo de diseño. No es una capacidad demostrada.
 
 ## Probarlo en local
 

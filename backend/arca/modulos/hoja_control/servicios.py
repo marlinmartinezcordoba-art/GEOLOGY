@@ -490,6 +490,15 @@ def validar(ctx, h: HojaControl) -> dict[str, Any]:
     elif clasif is None:
         avisos.append("la unidad no está clasificada: no hay lista de tipos documentales de la TRD para comparar")
     avisos.extend(legibilidad(ctx, lista_paginas))
+    anterior = None
+    for t in lista:  # los documentos de una unidad compleja van en orden cronológico
+        if t.fecha:
+            if anterior and t.fecha < anterior.fecha:
+                avisos.append(f"trámite {t.orden}: su fecha ({t.fecha.isoformat()}) es anterior a la del trámite {anterior.orden} ({anterior.fecha.isoformat()}): revise el orden cronológico")
+            anterior = t
+    from arca.modulos.historias import servicios as historias  # noqa: PLC0415 — solo lee el titular y la configuración
+
+    avisos.extend(historias.avisos_hoja(ctx, u))
     pendientes_qc = sum(1 for p in lista_paginas if p["estado"] != EstadoRecurso.APROBADO.value)
     if pendientes_qc:
         avisos.append(f"{pendientes_qc} páginas aún no están aprobadas en el control de calidad de la digitalización")
