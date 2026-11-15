@@ -57,12 +57,12 @@ Un ZIP con una carpeta por expediente:
 
 | Archivo | Contenido |
 |---|---|
-| `expediente.pdf` | Las páginas en orden y derechas, con el texto del OCR debajo de la imagen: se puede buscar y copiar. Sin OCR en el servidor, solo las imágenes |
+| `expediente.pdf` | En **PDF/A-2b** validado (sección 6): las páginas en orden y derechas, con el texto del OCR debajo de la imagen: se puede buscar y copiar. Sin OCR en el servidor, solo las imágenes |
 | `metadatos.json` | FUID; clasificación con la TRD, el acto, el acceso, la disposición y la retención; hoja de control verificada (cada documento con tipo, fecha, folios, páginas y metadatos); descripción ISAD(G) aprobada; fase; archivos originales con su huella y su calidad |
 | `hoja_control.csv` | Si tiene hoja verificada |
 
 En la raíz: `manifiesto.csv` (huella SHA-256 de cada archivo del paquete), `originales.csv` (huella de
-cada original recibido), `pendientes.csv` (qué expedientes no entraron y por qué) y `LEAME.txt`.
+cada original recibido), `pdfa.csv` (resultado de la validación PDF/A de cada expediente), `pendientes.csv` (qué expedientes no entraron y por qué) y `LEAME.txt`.
 
 - Por defecto entra **solo lo que está listo** según lo que lleva su lote: hoja verificada si la lleva y
   descripción aprobada si la lleva. Se puede desmarcar para un paquete de avance.
@@ -71,8 +71,31 @@ cada original recibido), `pendientes.csv` (qué expedientes no entraron y por qu
   la auditoría.
 - Permisos: lo pide y lo descarga quien puede expedir entregables; la lista la ve quien lee el inventario.
 
+## 6. PDF/A-2b (D-41)
+
+Cada `expediente.pdf` del paquete sale en **PDF/A-2b** (ISO 19005-2, nivel B), el formato de preservación.
+
+- **Qué se le agrega al PDF:**
+  - el perfil de color sRGB como intención de salida;
+  - los metadatos XMP con la declaración PDF/A, sincronizados con la información del documento: título
+    (identificador y nombre del expediente), asunto (serie de la TRD y proyecto), autor (la entidad) y
+    palabras clave (código, caja y carpeta);
+  - el identificador del archivo y lo demás que pide la norma.
+- **Cómo se valida.** Lo hace `pikepdf.pdfa`, un validador por **lista permitida**: aprueba un archivo solo
+  si reconoce cada construcción y sabe que cumple. Puede rechazar de más, pero no aprobar de más. Después de
+  escribir el archivo lo vuelve a abrir y valida esos bytes: lo aprobado es lo que se entrega.
+- **Si un expediente no se puede aprobar,** va como PDF común. `pdfa.csv` y `metadatos.json` dicen por qué,
+  regla por regla. La tabla de paquetes muestra cuántos quedaron en PDF/A («4 de 4»).
+- **No se instala nada aparte:** basta `pikepdf[pdfa]` en Python. No hace falta Ghostscript ni OCRmyPDF.
+
+**Validar un PDF/A.** En Entregables, **Validar un PDF/A** comprueba cualquier PDF contra PDF/A-1b, 2b o 3b,
+por ejemplo el que entregó un proveedor de digitalización. Dice si cumple y, si no, qué regla incumple. El
+archivo no se guarda; la validación queda en la auditoría (`VALIDAR_PDFA`).
+
+**Validación externa.** veraPDF es la herramienta de referencia para PDF/A. Conviene correrla sobre una
+muestra de cada entrega importante. En este entorno de desarrollo no se pudo ejecutar.
+
 ## Lo que falta
 
-- **PDF/A certificado.** El PDF del paquete tiene texto buscable, pero no es PDF/A validado. Requiere
-  instalar OCRmyPDF y Ghostscript en el servidor.
+- **Validación con veraPDF** sobre una muestra (ver arriba).
 - **Logos en los documentos expedidos en PDF.** Hoy se expiden en el Excel de la entidad.

@@ -1,18 +1,18 @@
 "use client";
 
-import { Archive, Download, FileOutput, FileStack, Tags } from "lucide-react";
+import { Archive, Download, FileCheck2, FileOutput, FileStack, Tags } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { useAvisos } from "@/components/ui/avisos";
 import { Boton, Cargando, Codigo, Insignia, Nota, Tabla, Vacio } from "@/components/ui/basicos";
-import { Campo, Casilla, Entrada } from "@/components/ui/campos";
-import { api } from "@/lib/api";
+import { Campo, Casilla, Entrada, Selector } from "@/components/ui/campos";
+import { api, apiSubir } from "@/lib/api";
 import { descargarArchivo } from "@/lib/descargas";
 import { fechaHora, numero } from "@/lib/formato";
 import { PERMISOS } from "@/lib/permisos";
 import { useSesion } from "@/lib/sesion";
-import type { Expedicion, PaqueteEntrega, Plantilla, Proyecto, TipoPlantilla } from "@/lib/tipos";
+import type { Expedicion, PaqueteEntrega, Plantilla, Proyecto, TipoPlantilla, ValidacionPdfa } from "@/lib/tipos";
 import { useDatos } from "@/lib/use-datos";
 
 const ICONO = { fuid: <FileOutput />, rotulo_caja: <Tags />, rotulo_carpeta: <Tags /> } as Record<string, React.ReactNode>;
@@ -113,7 +113,7 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
         <div className="flex flex-col gap-3">
           <div className="max-w-3xl">
             <span className="flex items-center gap-2 font-semibold text-titulo [&_svg]:size-5 [&_svg]:text-marca"><Archive />Paquete de entrega digital</span>
-            <p className="mt-1 text-[12.5px] text-texto-3">Un ZIP para cargar en el SGDEA de la entidad: por cada expediente, el PDF con las páginas derechas y el texto del OCR (se puede buscar), sus metadatos (FUID, TRD, hoja de control y descripción) y la hoja de control; con el manifiesto de huellas SHA-256 y la lista de lo que quedó pendiente. Usa los filtros de cajas y de lote de arriba.</p>
+            <p className="mt-1 text-[12.5px] text-texto-3">Un ZIP para cargar en el SGDEA de la entidad: por cada expediente, el PDF/A-2b validado con las páginas derechas y el texto del OCR (se puede buscar), sus metadatos (FUID, TRD, hoja de control y descripción) y la hoja de control; con el manifiesto de huellas SHA-256 y la lista de lo que quedó pendiente. Usa los filtros de cajas y de lote de arriba.</p>
           </div>
           {puedeExpedir && (
             <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
@@ -124,7 +124,7 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
         </div>
         {!!paquetes.datos?.length && (
           <Tabla className="mt-3 rounded-xl border border-line">
-            <thead><tr><th>N.º</th><th>Pedido</th><th>Estado</th><th>Expedientes</th><th>Pendientes</th><th>Tamaño</th><th>Huella SHA-256</th><th /></tr></thead>
+            <thead><tr><th>N.º</th><th>Pedido</th><th>Estado</th><th>Expedientes</th><th>PDF/A-2b</th><th>Pendientes</th><th>Tamaño</th><th>Huella SHA-256</th><th /></tr></thead>
             <tbody>
               {paquetes.datos.map((p) => (
                 <tr key={p.id}>
@@ -132,6 +132,7 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
                   <td className="whitespace-nowrap">{fechaHora(p.creado_en)}</td>
                   <td>{p.estado === "listo" ? <Insignia tono="ok" punto>Listo</Insignia> : p.estado === "error" ? <Insignia tono="critico" punto>Error</Insignia> : <Insignia tono="info" punto>Armándose…</Insignia>}{p.error && <p className="mt-1 max-w-xs text-[11.5px] text-critico">{p.error}</p>}</td>
                   <td className="tabular">{numero(p.unidades)}</td>
+                  <td>{p.resumen?.pdfa ? <Insignia tono={p.resumen.pdfa.conformes === p.resumen.pdfa.total ? "ok" : "aviso"}>{numero(p.resumen.pdfa.conformes)} de {numero(p.resumen.pdfa.total)}</Insignia> : "—"}</td>
                   <td className="tabular" title={p.pendientes.slice(0, 20).map((x) => `${x.identificador}: ${x.motivo}`).join("\n")}>{numero(p.pendientes.length)}</td>
                   <td className="tabular whitespace-nowrap">{p.tamano ? `${numero(Math.max(1, Math.round(p.tamano / 1024)))} KB` : "—"}</td>
                   <td>{p.sha256 ? <Codigo className="text-[11px]">{p.sha256.slice(0, 16)}…</Codigo> : "—"}</td>
@@ -142,6 +143,7 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
           </Tabla>
         )}
       </div>
+      <ValidarPdfa ruta={`/proyectos/${proyecto.id}/entrega/validar-pdfa`} />
       <div>
         <p className="mb-2 font-semibold text-titulo">Documentos expedidos</p>
         {!historial.datos?.length ? <Vacio icono={<FileStack />} titulo="Todavía no se ha expedido nada" /> : (
@@ -163,6 +165,67 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
           </Tabla>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Valida un PDF contra PDF/A (por ejemplo, el que entregó un proveedor de digitalización). No lo guarda. */
+function ValidarPdfa({ ruta }: { ruta: string }) {
+  const avisos = useAvisos();
+  const [nivel, setNivel] = useState("2b");
+  const [validando, setValidando] = useState(false);
+  const [resultado, setResultado] = useState<ValidacionPdfa | null>(null);
+  const entrada = useRef<HTMLInputElement>(null);
+
+  async function validar(archivo: File) {
+    setValidando(true);
+    try {
+      const datos = new FormData();
+      datos.append("archivo", archivo);
+      datos.append("nivel", nivel);
+      setResultado(await apiSubir<ValidacionPdfa>(ruta, datos));
+    } catch (err) {
+      avisos.error((err as Error).message);
+    } finally {
+      setValidando(false);
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
+      <span className="flex items-center gap-2 font-semibold text-titulo [&_svg]:size-5 [&_svg]:text-marca"><FileCheck2 />Validar un PDF/A</span>
+      <p className="mt-1 max-w-3xl text-[12.5px] text-texto-3">Compruebe si un PDF cumple la norma PDF/A (ISO 19005), por ejemplo el que entregó un proveedor. El validador solo aprueba lo que reconoce como conforme. El archivo no se guarda.</p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <Campo etiqueta="Nivel" className="w-40">
+          <Selector value={nivel} onChange={(e) => setNivel(e.target.value)}>
+            <option value="1b">PDF/A-1b</option>
+            <option value="2b">PDF/A-2b</option>
+            <option value="3b">PDF/A-3b</option>
+          </Selector>
+        </Campo>
+        <input ref={entrada} type="file" accept=".pdf,application/pdf" hidden onChange={(e) => e.target.files?.[0] && validar(e.target.files[0])} />
+        <Boton icono={<FileCheck2 />} cargando={validando} onClick={() => entrada.current?.click()}>Elegir el PDF y validar</Boton>
+      </div>
+      {resultado && (
+        <div className="mt-3 rounded-lg border border-line p-3">
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
+            <span className="font-semibold text-titulo">{resultado.archivo}</span>
+            {resultado.veredicto === "conforme" ? <Insignia tono="ok" punto>Cumple {resultado.nivel}</Insignia> : resultado.veredicto === "no_conforme" ? <Insignia tono="critico" punto>No cumple {resultado.nivel}</Insignia> : <Insignia tono="aviso" punto>No se pudo verificar todo</Insignia>}
+            <span className="text-[12px] text-texto-3">{numero(Math.max(1, Math.round(resultado.bytes / 1024)))} KB · {resultado.validado_con}</span>
+          </div>
+          {!!resultado.hallazgos.length && (
+            <ul className="mt-2 flex flex-col gap-1 text-[12.5px]">
+              {resultado.hallazgos.map((h, i) => (
+                <li key={i} className={h.tipo === "incumple" ? "text-critico" : "text-aviso"}>
+                  <span className="font-semibold">{h.explicacion || h.area || "Regla de la norma"}</span>{h.explicacion && h.area ? ` · ${h.area}` : ""}
+                  <span className="block text-[11.5px] text-texto-3"><Codigo className="text-[11px]">{h.regla}</Codigo> {h.mensaje}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -44,6 +44,7 @@ class PaqueteEntrega(IdMixin, TenantMixin, Base):
     unidades: Mapped[int] = mapped_column(Integer, default=0)
     pendientes: Mapped[list] = mapped_column(Json, default=list)  # las que no entraron y por qué
     archivo_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("archivos.id", ondelete="RESTRICT"))
+    resumen: Mapped[dict] = mapped_column(Json, default=dict, server_default="{}")  # cuántos quedaron en PDF/A, con texto…
     error: Mapped[str] = mapped_column(Text, default="")
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     creado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id", ondelete="RESTRICT"))

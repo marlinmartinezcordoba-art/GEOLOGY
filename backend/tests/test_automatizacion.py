@@ -10,7 +10,7 @@ import zipfile
 import openpyxl
 import pikepdf
 from conftest import agregar_usuario
-from fabricas import pdf_con_texto
+from fabricas import pagina_con_texto, pdf_con_texto
 from PIL import Image
 from test_flujo import _procesar
 from test_hoja_control import _listo as _listo_hoja
@@ -18,6 +18,7 @@ from test_m13_ocr import PAGINAS, _pagina, requiere_tesseract
 from test_m13_ocr import _listo as _listo_ocr
 from test_m24_productividad import _libro
 
+from arca.modulos.entrega import pdfa
 from arca.modulos.m13_ocr.propuestas import proponer
 
 OFICIO = ["ENTIDAD FICTICIA NACIONAL", "OFICIO N.º 045", "Ciudad Ficticia, 5 de marzo de 2021", "Señora", "Ana Ficticia Pérez",
@@ -108,7 +109,7 @@ def test_paquete_de_entrega(cliente, org_a, org_b):
     assert descarga.status_code == 200 and descarga.headers["x-sha256"] == hashlib.sha256(descarga.content).hexdigest()
     z = _zip(descarga.content)
     nombres = set(z.namelist())
-    assert {"CP-1/expediente.pdf", "CP-1/metadatos.json", "manifiesto.csv", "originales.csv", "pendientes.csv", "LEAME.txt"} <= nombres
+    assert {"CP-1/expediente.pdf", "CP-1/metadatos.json", "manifiesto.csv", "originales.csv", "pdfa.csv", "pendientes.csv", "LEAME.txt"} <= nombres
     assert "CP-1/hoja_control.csv" not in nombres  # no tiene hoja verificada
     # El manifiesto trae la huella de cada archivo y coincide.
     manifiesto = list(csv.reader(io.StringIO(z.read("manifiesto.csv").decode("utf-8-sig")), delimiter=";"))[1:]
@@ -118,16 +119,47 @@ def test_paquete_de_entrega(cliente, org_a, org_b):
     assert meta["unidad"]["identificador"] == "CP-1" and meta["digitalizacion"]["paginas"] == 4 and meta["hoja_control"] is None
     assert meta["clasificacion"] is None or meta["clasificacion"]["codigo"]
     assert len(meta["digitalizacion"]["originales"][0]["sha256"]) == 64
-    with pikepdf.open(io.BytesIO(z.read("CP-1/expediente.pdf"))) as pdf:
+    expediente = z.read("CP-1/expediente.pdf")
+    with pikepdf.open(io.BytesIO(expediente)) as pdf:
         assert len(pdf.pages) == 4 and "/Font" in pdf.pages[0].Resources  # con la capa de texto del OCR
-    assert "con texto buscable" in z.read("LEAME.txt").decode()
+        assert pdf.open_metadata().pdfa_status == "2B" and pdf.docinfo["/Title"] == "CP-1 · Actas del comité directivo"
+        assert "/OutputIntents" in pdf.Root and "/ID" in pdf.trailer
+    assert pdfa.validar(expediente)["conforme"]  # PDF/A-2b validado sobre los bytes entregados
+    assert meta["pdf"]["formato"] == "PDF/A-2b" and meta["pdf"]["conforme"] and meta["pdf"]["hallazgos"] == []
+    informe = list(csv.reader(io.StringIO(z.read("pdfa.csv").decode("utf-8-sig")), delimiter=";"))
+    assert informe[1][:3] == ["CP-1", "PDF/A-2b", "sí"]
+    assert paquete["resumen"]["pdfa"] == {"nivel": "PDF/A-2b", "conformes": 1, "total": 1}
+    # El validador del proyecto aprueba el PDF/A entregado y rechaza un PDF común, diciendo por qué.
+    validar = f"{base}/entrega/validar-pdfa"
+    r = cliente.post(validar, files={"archivo": ("expediente.pdf", expediente)}, headers=org_a.admin).json()
+    assert r["conforme"] and r["veredicto"] == "conforme" and r["nivel"] == "PDF/A-2b"
+    r = cliente.post(validar, files={"archivo": ("escaneo.pdf", pdf_con_texto([PAGINAS[0]]))}, headers=org_a.admin).json()
+    assert not r["conforme"] and r["veredicto"] == "no_conforme" and any("Metadata" in h["mensaje"] and h["area"] == "Metadatos del documento (XMP)" for h in r["hallazgos"])
+    assert any(h["explicacion"] == "Al archivo le falta su identificador (/ID)." and h["area"] == "Estructura del archivo" for h in r["hallazgos"])
+    assert cliente.post(validar, files={"archivo": ("x.pdf", b"no es pdf")}, headers=org_a.admin).status_code == 422
+    assert cliente.post(validar, files={"archivo": ("x.pdf", expediente)}, data={"nivel": "4z"}, headers=org_a.admin).status_code == 422
+    assert "PDF/A-2b, páginas en orden, con texto buscable" in z.read("LEAME.txt").decode() and "(1 de 1)" in z.read("LEAME.txt").decode()
     pendientes = z.read("pendientes.csv").decode("utf-8-sig")
     assert pendientes.count("sin digitalizar") == 5 and "CP-1" not in pendientes
     eventos = cliente.get("/api/v1/auditoria/eventos?limite=100", headers=org_a.admin).json()
-    assert {"SOLICITAR_PAQUETE", "GENERAR_PAQUETE", "DESCARGAR_PAQUETE"} <= {e["accion"] for e in eventos}
+    assert {"SOLICITAR_PAQUETE", "GENERAR_PAQUETE", "DESCARGAR_PAQUETE", "VALIDAR_PDFA"} <= {e["accion"] for e in eventos}
     # Permisos y aislamiento.
     _, consulta = agregar_usuario(cliente, org_a, "consulta@alfa.example.com", "Consulta y auditoría")
     assert cliente.get(entrega, headers=consulta).status_code == 200
     assert cliente.post(entrega, json={"solo_listos": False}, headers=consulta).status_code == 403
     assert cliente.get(f"{entrega}/{paquete['id']}/archivo", headers=consulta).status_code == 403
     assert cliente.get(entrega, headers=org_b.admin).status_code == 404
+
+
+def test_pdfa_sin_ocr_en_grises_y_en_color():
+    """La conversión no depende del OCR: un escaneo de solo imágenes también queda en PDF/A-2b validado."""
+    for modo in ("L", "RGB"):
+        salida = io.BytesIO()
+        pagina = pagina_con_texto(PAGINAS[0]).convert(modo)
+        pagina.save(salida, "PDF", resolution=200)
+        assert not pdfa.validar(salida.getvalue())["conforme"]  # el PDF del escáner no es PDF/A
+        r = pdfa.convertir(pikepdf.open(io.BytesIO(salida.getvalue())), "EXP-1 · Expediente ficticio", asunto="Serie ficticia", autor="Entidad Ficticia")
+        assert r.conforme and r.hallazgos == [] and r.motor.startswith("pikepdf")
+        assert pdfa.validar(r.contenido)["conforme"] and pdfa.validar(r.contenido, "1b")["veredicto"] in ("conforme", "no_conforme", "no_verificado")
+        with pikepdf.open(io.BytesIO(r.contenido)) as pdf:
+            assert pdf.docinfo["/Author"] == "Entidad Ficticia" and pdf.open_metadata().pdfa_status == "2B"

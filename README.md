@@ -27,10 +27,10 @@ autorización y trazabilidad.
 | **Descripción ISAD(G)** | Procesos por lote (hoja de control, ISAD(G) o ambas), descripción sobre lo digitalizado con el origen de cada elemento, revisión según la norma, aprobación por otra persona y base de descripción en el formato de la entidad | **Construido.** Ficha: [`docs/fichas/DESCRIPCION_ISADG.md`](docs/fichas/DESCRIPCION_ISADG.md) |
 | **M23 Consulta** | Búsqueda sin tildes en metadatos, OCR, hoja verificada y descripción aprobada, con filtros, fragmentos y exportación; ficha del expediente con visor; acceso según la TRD y alcance por proyecto (también para la entidad cliente) | **Construido.** Ficha: [`docs/fichas/M23_CONSULTA.md`](docs/fichas/M23_CONSULTA.md) |
 | **Flujo automático** | Al cargar, calidad → OCR → hoja de control → descripción sin intervención, hasta donde decide una persona; cola de trabajos en la base de datos con trabajador en la aplicación o aparte; tablero por etapa | **Construido.** Ficha: [`docs/fichas/FLUJO_AUTOMATICO.md`](docs/fichas/FLUJO_AUTOMATICO.md) |
-| **Automatización y paquete de entrega** | Metadatos de cada documento desde el OCR (asunto, remitente, destinatario, firmantes, lugar), páginas giradas enderezadas, avisos de legibilidad, FUID con folios contados, productividad contada sola y paquete digital para el SGDEA (PDF buscable, metadatos, hoja y manifiesto de huellas) | **Construido.** Ficha: [`docs/fichas/AUTOMATIZACION_Y_PAQUETE_DE_ENTREGA.md`](docs/fichas/AUTOMATIZACION_Y_PAQUETE_DE_ENTREGA.md) |
-| Siguiente | PDF/A certificado (OCRmyPDF), documentos expedidos en PDF con logos, despliegue en servidor (PostgreSQL, almacenamiento S3, cifrado) | Pendiente |
+| **Automatización y paquete de entrega** | Metadatos de cada documento desde el OCR (asunto, remitente, destinatario, firmantes, lugar), páginas giradas enderezadas, avisos de legibilidad, FUID con folios contados, productividad contada sola y paquete digital para el SGDEA (PDF/A-2b validado con texto buscable, metadatos, hoja y manifiesto de huellas); validador PDF/A para cualquier PDF | **Construido.** Ficha: [`docs/fichas/AUTOMATIZACION_Y_PAQUETE_DE_ENTREGA.md`](docs/fichas/AUTOMATIZACION_Y_PAQUETE_DE_ENTREGA.md) |
+| Siguiente | Validación externa con veraPDF, documentos expedidos en PDF con logos, despliegue en servidor (PostgreSQL, almacenamiento S3, cifrado) | Pendiente |
 
-Hay 147 pruebas automáticas en el backend. La meta de 500.000 imágenes diarias es un objetivo de diseño. No es una capacidad demostrada.
+Hay 148 pruebas automáticas en el backend. La meta de 500.000 imágenes diarias es un objetivo de diseño. No es una capacidad demostrada.
 
 ## Probarlo en local
 

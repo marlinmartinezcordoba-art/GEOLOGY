@@ -2,16 +2,16 @@
 
 ARCA no es un SGDEA (D-38): entrega el resultado. Un paquete es un ZIP con una carpeta por expediente:
 
-- `expediente.pdf`: las páginas en orden, derechas, con el texto reconocido por OCR debajo de la imagen (se puede buscar
-  y copiar). Si el servidor no tiene OCR, solo con las imágenes. (El PDF/A certificado queda para cuando se instale
-  OCRmyPDF: ver la ficha.)
+- `expediente.pdf`: en **PDF/A-2b**, validado después de escrito (ver `pdfa.py`): las páginas en orden, derechas, con
+  el texto reconocido por OCR debajo de la imagen (se puede buscar y copiar). Si el servidor no tiene OCR, solo con las
+  imágenes. Si un expediente no se puede aprobar como PDF/A, va como PDF común y el informe dice por qué.
 - `metadatos.json`: el FUID, la clasificación (con la TRD, el acceso, la disposición y la retención), la hoja de control
   verificada (cada documento con su tipo, fecha, folios, páginas y metadatos), la descripción ISAD(G) aprobada, la fase y
   los archivos originales con su huella.
 - `hoja_control.csv`, si tiene hoja verificada.
 
 Y en la raíz: `manifiesto.csv` (la huella SHA-256 de cada archivo del paquete), `originales.csv` (la huella de cada
-original recibido), `pendientes.csv` (lo que no entró y por qué) y `LEAME.txt`.
+original recibido), `pdfa.csv` (el resultado de la validación PDF/A de cada expediente), `pendientes.csv` (lo que no entró y por qué) y `LEAME.txt`.
 
 Por defecto entra solo lo que está listo según lo que lleva su lote: hoja verificada si la lleva y descripción aprobada si
 la lleva.
@@ -46,6 +46,7 @@ from arca.modelos import (
 )
 from arca.modelos.base import ahora_utc
 from arca.modelos.transferencias import FASES
+from arca.modulos.entrega import pdfa
 from arca.modulos.m08_inventarios.fuid import clave_de
 from arca.modulos.m08_inventarios.servicios import guardar_archivo
 from arca.modulos.m10_digitalizacion.paginas import imagen_pagina, paginas
@@ -143,28 +144,29 @@ def _metadatos(ctx, proyecto: Proyecto, u: UnidadDocumental, pags: list[dict[str
     }
 
 
-def _pdf(ctx, u: UnidadDocumental, pags: list[dict[str, Any]]) -> tuple[bytes, bool]:
-    """El PDF del expediente: con texto buscable si hay OCR; si no, solo las imágenes."""
+def _pdf(ctx, u: UnidadDocumental, pags: list[dict[str, Any]], meta: dict[str, Any]) -> tuple[pdfa.Resultado, bool]:
+    """El PDF/A del expediente: con texto buscable si hay OCR; si no, solo las imágenes. Devuelve (resultado, con texto)."""
     import pikepdf  # noqa: PLC0415
     from PIL import Image  # noqa: PLC0415
 
     from arca.modulos.m13_ocr import lector  # noqa: PLC0415
 
     imagenes = [imagen_pagina(ctx, u, p["n"], ancho=2200) for p in pags]
-    if lector.disponible() and "spa" in lector.idiomas():
-        destino = pikepdf.Pdf.new()
-        partes = [pikepdf.open(io.BytesIO(lector.pdf_buscable(img))) for img in imagenes]
-        for parte in partes:
-            destino.pages.extend(parte.pages)
-        destino.docinfo["/Title"] = u.identificador
-        destino.docinfo["/Producer"] = "ARCA"
+    con_texto = lector.disponible() and "spa" in lector.idiomas()
+    if con_texto:
+        documento = pikepdf.Pdf.new()
+        for img in imagenes:
+            documento.pages.extend(pikepdf.open(io.BytesIO(lector.pdf_buscable(img))).pages)
+    else:
+        hojas = [Image.open(io.BytesIO(x)).convert("RGB") for x in imagenes]
         salida = io.BytesIO()
-        destino.save(salida)
-        return salida.getvalue(), True
-    hojas = [Image.open(io.BytesIO(x)).convert("RGB") for x in imagenes]
-    salida = io.BytesIO()
-    hojas[0].save(salida, "PDF", resolution=200, save_all=True, append_images=hojas[1:])
-    return salida.getvalue(), False
+        hojas[0].save(salida, "PDF", resolution=200, save_all=True, append_images=hojas[1:])
+        documento = pikepdf.open(io.BytesIO(salida.getvalue()))
+    clas = meta.get("clasificacion") or {}
+    titulo = f"{u.identificador} · {u.nombre}" if u.nombre else u.identificador
+    asunto = " · ".join(x for x in (f"{clas.get('codigo')} {clas.get('nombre')}" if clas else "", meta["proyecto"]["nombre"]) if x)
+    palabras = ", ".join(x for x in (clas.get("codigo", ""), u.caja and f"caja {u.caja}", u.carpeta and f"carpeta {u.carpeta}") if x)
+    return pdfa.convertir(documento, titulo, asunto=asunto, autor=meta["proyecto"]["entidad"] or "", palabras=palabras), con_texto
 
 
 def _csv(filas: list[list[Any]]) -> bytes:
@@ -182,6 +184,7 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
     manifiesto: list[list[Any]] = [["archivo", "bytes", "sha256"]]
     originales: list[list[Any]] = [["expediente", "archivo original", "formato", "páginas", "bytes", "sha256", "calidad"]]
     con_texto = True
+    informe_pdfa: list[list[Any]] = [["expediente", "formato", "conforme", "validado con", "hallazgos"]]
 
     def agregar(z: zipfile.ZipFile, ruta: str, datos: bytes) -> None:
         z.writestr(ruta, datos)
@@ -192,9 +195,12 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
             pags = paginas(ctx, u)
             carpeta = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in u.identificador)
             meta = _metadatos(ctx, proyecto, u, pags)
-            pdf, texto = _pdf(ctx, u, pags)
+            pdf, texto = _pdf(ctx, u, pags, meta)
             con_texto = con_texto and texto
-            agregar(z, f"{carpeta}/expediente.pdf", pdf)
+            meta["pdf"] = pdf.como_dict()
+            informe_pdfa.append([u.identificador, meta["pdf"]["formato"], "sí" if pdf.conforme else "no", pdf.motor,
+                                 " | ".join(f"{h['regla']}: {h['mensaje']}" for h in pdf.hallazgos)[:2000]])
+            agregar(z, f"{carpeta}/expediente.pdf", pdf.contenido)
             agregar(z, f"{carpeta}/metadatos.json", json.dumps(meta, ensure_ascii=False, indent=2, default=str).encode("utf-8"))
             if meta["hoja_control"]:
                 filas = [["n.º", "fecha", "tipo documental", "detalle", "folio desde", "folio hasta", "radicado", "asunto", "remitente", "destinatario", "observaciones"]]
@@ -204,10 +210,13 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
             for o in meta["digitalizacion"]["originales"]:
                 originales.append([u.identificador, o["archivo"], o["formato"], o["paginas"], o["tamano"], o["sha256"], o["calidad"]])
         agregar(z, "originales.csv", _csv(originales))
+        agregar(z, "pdfa.csv", _csv(informe_pdfa))
         agregar(z, "pendientes.csv", _csv([["expediente", "por qué no entró"]] + [[x["identificador"], x["motivo"]] for x in paquete.pendientes]))
+        conformes = sum(1 for f in informe_pdfa[1:] if f[2] == "sí")
         leame = (f"Paquete de entrega n.º {paquete.numero} · {proyecto.codigo} · {proyecto.nombre}\nEntidad: {proyecto.entidad_cliente}\n"
                  f"Generado por ARCA el {date.today().isoformat()} · {len(entran)} expedientes\n\n"
-                 "Cada carpeta es un expediente: expediente.pdf (páginas en orden" + (", con texto buscable" if con_texto else "") + "), metadatos.json y, si la tiene, hoja_control.csv.\n"
+                 f"Cada carpeta es un expediente: expediente.pdf ({pdfa.NOMBRE}, páginas en orden" + (", con texto buscable" if con_texto else "") + "), metadatos.json y, si la tiene, hoja_control.csv.\n"
+                 f"pdfa.csv dice, por expediente, si el PDF quedó aprobado como {pdfa.NOMBRE} ({conformes} de {len(entran)}) y, si no, por qué.\n"
                  "manifiesto.csv trae la huella SHA-256 de cada archivo de este paquete; originales.csv, la de cada archivo original recibido.\n"
                  "pendientes.csv dice qué expedientes no entraron y por qué.\n")
         agregar(z, "LEAME.txt", leame.encode("utf-8"))
@@ -215,8 +224,9 @@ def generar(ctx, paquete: PaqueteEntrega) -> PaqueteEntrega:
     contenido = buffer.getvalue()
     archivo = guardar_archivo(ctx, proyecto, contenido, f"Entrega_{proyecto.codigo}_n{paquete.numero}_{datetime.now():%Y%m%d_%H%M}.zip", {"ZIP"})
     paquete.estado, paquete.archivo_id, paquete.unidades, paquete.terminado_en, paquete.error = "listo", archivo.id, len(entran), ahora_utc(), ""
+    paquete.resumen = {"pdfa": {"nivel": pdfa.NOMBRE, "conformes": conformes, "total": len(entran)}, "con_texto": con_texto}
     ctx.auditar(accion="GENERAR_PAQUETE", objeto="PaqueteEntrega", objeto_id=paquete.id,
-                detalle=f"{proyecto.codigo} · n.º {paquete.numero} · {len(entran)} expedientes · {len(contenido) // 1024} KB · SHA-256 {archivo.sha256[:16]}…")
+                detalle=f"{proyecto.codigo} · n.º {paquete.numero} · {len(entran)} expedientes · {conformes} en {pdfa.NOMBRE} · {len(contenido) // 1024} KB · SHA-256 {archivo.sha256[:16]}…")
     ctx.db.commit()
     return paquete
 
@@ -225,7 +235,7 @@ def listar(ctx, proyecto: Proyecto) -> list[dict[str, Any]]:
     salida = []
     for p in ctx.db.scalars(select(PaqueteEntrega).where(PaqueteEntrega.proyecto_id == proyecto.id).order_by(PaqueteEntrega.numero.desc())):
         a = ctx.db.get(ArchivoDigital, p.archivo_id) if p.archivo_id else None
-        salida.append({"id": p.id, "numero": p.numero, "estado": p.estado, "filtro": p.filtro, "unidades": p.unidades, "pendientes": p.pendientes, "error": p.error,
+        salida.append({"id": p.id, "numero": p.numero, "estado": p.estado, "filtro": p.filtro, "unidades": p.unidades, "pendientes": p.pendientes, "error": p.error, "resumen": p.resumen or {},
                        "creado_en": p.creado_en, "terminado_en": p.terminado_en, "nombre_archivo": a.nombre_original if a else None, "tamano": a.tamano if a else None,
                        "sha256": a.sha256 if a else None})
     return salida

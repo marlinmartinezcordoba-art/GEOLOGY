@@ -183,7 +183,11 @@ export type VersionPlantilla = { id: string; version: number; codigo_formato: st
 export type Plantilla = { id: string; tipo: string; nombre: string; descripcion: string; proyecto_id: string | null; creado_en: string; versiones: VersionPlantilla[] };
 export type PaqueteEntrega = {
   id: string; numero: number; estado: "en_cola" | "listo" | "error"; filtro: { cajas?: string[]; lote?: string; solo_listos?: boolean }; unidades: number;
-  pendientes: { identificador: string; motivo: string }[]; error: string; creado_en: string; terminado_en: string | null; nombre_archivo: string | null; tamano: number | null; sha256: string | null;
+  pendientes: { identificador: string; motivo: string }[]; error: string; resumen?: { pdfa?: { nivel: string; conformes: number; total: number }; con_texto?: boolean }; creado_en: string; terminado_en: string | null; nombre_archivo: string | null; tamano: number | null; sha256: string | null;
+};
+export type ValidacionPdfa = {
+  archivo: string; bytes: number; nivel: string; conforme: boolean; veredicto: "conforme" | "no_conforme" | "no_verificado"; validado_con: string; aviso?: string;
+  hallazgos: { regla: string; area: string; explicacion: string; donde: string; mensaje: string; tipo: "incumple" | "no verificado" }[];
 };
 export type Expedicion = { id: string; tipo: string; elementos: number; filtro: { cajas?: string[]; lote?: string }; creado_en: string; plantilla_version: number; codigo_formato: string; nombre_archivo: string; sha256: string };
 
