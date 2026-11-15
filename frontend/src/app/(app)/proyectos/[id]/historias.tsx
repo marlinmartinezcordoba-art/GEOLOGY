@@ -1,6 +1,6 @@
 "use client";
 
-import { IdCard, Save, Sparkles, UserCheck } from "lucide-react";
+import { ClipboardCheck, IdCard, Save, Sparkles, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -8,6 +8,7 @@ import { useAvisos } from "@/components/ui/avisos";
 import { Boton, Cargando, Insignia, Modal, Nota, Tabla, Vacio } from "@/components/ui/basicos";
 import { Area, Campo, Casilla, Entrada, Selector } from "@/components/ui/campos";
 import { api } from "@/lib/api";
+import { descargarArchivo } from "@/lib/descargas";
 import { numero } from "@/lib/formato";
 import { PERMISOS } from "@/lib/permisos";
 import { useSesion } from "@/lib/sesion";
@@ -32,6 +33,20 @@ export function Historias({ proyecto }: { proyecto: Proyecto }) {
   const [editando, setEditando] = useState<ExpedienteHistoria | null>(null);
   const [proponiendo, setProponiendo] = useState(false);
   const elabora = puede(PERMISOS.hojaControl);
+  const expide = puede(PERMISOS.expedir);
+  const [expidiendo, setExpidiendo] = useState<string | null>(null);
+
+  async function listaChequeo(f: ExpedienteHistoria) {
+    setExpidiendo(f.unidad_id);
+    try {
+      const r = await api<{ expedicion_id: string; nombre_archivo: string }>(`${base}/expedientes/${f.unidad_id}/lista-chequeo`, { metodo: "POST" });
+      await descargarArchivo(`/proyectos/${proyecto.id}/entregables/${r.expedicion_id}/archivo`, r.nombre_archivo);
+    } catch (err) {
+      avisos.error((err as Error).message);
+    } finally {
+      setExpidiendo(null);
+    }
+  }
 
   async function proponer() {
     setProponiendo(true);
@@ -84,6 +99,7 @@ export function Historias({ proyecto }: { proyecto: Proyecto }) {
                     </td>
                     <td className="whitespace-nowrap text-right">
                       <Link href={`/proyectos/${proyecto.id}/hojas/${f.unidad_id}`} className="mr-3 text-[13px] font-semibold text-marca hover:underline">Hoja →</Link>
+                      {expide && f.completitud.hoja && <Boton tamano="sm" variante="fantasma" icono={<ClipboardCheck />} cargando={expidiendo === f.unidad_id} onClick={() => listaChequeo(f)} className="mr-1">Lista de chequeo</Boton>}
                       {elabora && <Boton tamano="sm" icono={<UserCheck />} onClick={() => setEditando(f)}>{f.titular?.estado === "confirmado" ? "Editar" : "Confirmar"}</Boton>}
                     </td>
                   </tr>
@@ -104,6 +120,7 @@ function ConfigCard({ base, datos, alGuardar }: { base: string; datos: ConfigHis
   const dirige = puede(PERMISOS.proyectos);
   const [editando, setEditando] = useState(!datos.configurado && dirige);
   const [activo, setActivo] = useState(datos.configurado ? datos.activo : true);
+  const [restringido, setRestringido] = useState(datos.acceso_restringido);
   const [series, setSeries] = useState(datos.series.join(", "));
   const [tipos, setTipos] = useState(datos.tipos_obligatorios.join("\n"));
   const [motivo, setMotivo] = useState("");
@@ -112,7 +129,7 @@ function ConfigCard({ base, datos, alGuardar }: { base: string; datos: ConfigHis
   async function guardar() {
     setGuardando(true);
     try {
-      await api(`${base}/config`, { metodo: "PUT", cuerpo: { activo, series: series.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean), tipos_obligatorios: tipos.split("\n").map((x) => x.trim()).filter(Boolean), motivo } });
+      await api(`${base}/config`, { metodo: "PUT", cuerpo: { activo, acceso_restringido: restringido, series: series.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean), tipos_obligatorios: tipos.split("\n").map((x) => x.trim()).filter(Boolean), motivo } });
       avisos.exito("Configuración de historias laborales guardada.");
       setEditando(false);
       alGuardar();
@@ -132,6 +149,7 @@ function ConfigCard({ base, datos, alGuardar }: { base: string; datos: ConfigHis
       {!editando ? (
         <div className="mt-2 flex flex-col gap-1 text-[13px] text-texto-2">
           <span>Series de la TRD: <b>{datos.series.join(", ") || "todo el proyecto"}</b></span>
+          <span>Acceso: <b>{datos.acceso_restringido ? "restringido (solo con permiso de consulta reservada se ve el contenido)" : "según la TRD"}</b></span>
           <span>Tipos documentales mínimos ({datos.tipos_obligatorios.length}): {datos.tipos_obligatorios.join(" · ") || "ninguno"}</span>
           {dirige && <div className="mt-1"><Boton tamano="sm" onClick={() => setEditando(true)}>Cambiar</Boton></div>}
         </div>
@@ -139,6 +157,7 @@ function ConfigCard({ base, datos, alGuardar }: { base: string; datos: ConfigHis
         <div className="mt-3 flex flex-col gap-3">
           <Nota tono="aviso">{datos.aviso}</Nota>
           <Casilla etiqueta="Este proyecto es de historias laborales" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
+          <Casilla etiqueta="Acceso restringido a las historias laborales aunque la TRD no lo marque (datos sensibles, artículo 9.5.3)" checked={restringido} onChange={(e) => setRestringido(e.target.checked)} />
           <Campo etiqueta="Códigos de la TRD que son historias laborales" ayuda="Separados por coma. Vacío = todo el proyecto."><Entrada value={series} onChange={(e) => setSeries(e.target.value)} placeholder="Ej.: 100-15" /></Campo>
           <Campo etiqueta="Tipos documentales mínimos" ayuda={datos.tipos_de_la_trd.length ? `Uno por renglón. En la TRD del proyecto: ${datos.tipos_de_la_trd.slice(0, 12).join(", ")}${datos.tipos_de_la_trd.length > 12 ? "…" : ""}` : "Uno por renglón."}>
             <Area className="min-h-32" value={tipos} onChange={(e) => setTipos(e.target.value)} />

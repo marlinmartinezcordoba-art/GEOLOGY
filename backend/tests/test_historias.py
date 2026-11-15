@@ -101,3 +101,72 @@ def test_sin_configuracion_no_aplica_y_orden_cronologico_para_todos(cliente, org
         cliente.patch(f"{hc}/tramites/{tr['id']}", json={"tipo_documental": "Acta", "fecha": fecha}, headers=org_a.admin)
     avisos = cliente.get(hc, headers=org_a.admin).json()["validacion"]["avisos"]
     assert any("revise el orden cronológico" in a for a in avisos) and not any("historia laboral" in a for a in avisos)
+
+
+def _plantilla(cliente, org, tipo, contenido):
+    pl = cliente.post("/api/v1/plantillas", json={"tipo": tipo, "nombre": f"Formato {tipo} de la entidad"}, headers=org.admin).json()
+    r = cliente.post(f"/api/v1/plantillas/{pl['id']}/versiones", files={"archivo": ("f.xlsx", contenido)}, data={"motivo": "Formato de la entidad ficticia"}, headers=org.admin)
+    assert r.status_code == 201, r.text
+
+
+def _textos(cliente, org, base, expedicion_id):
+    import io  # noqa: PLC0415
+
+    import openpyxl  # noqa: PLC0415
+
+    hoja = openpyxl.load_workbook(io.BytesIO(cliente.get(f"{base}/entregables/{expedicion_id}/archivo", headers=org.admin).content)).active
+    return [[str(c.value) for c in f if c.value is not None] for f in hoja.iter_rows()]
+
+
+def test_fuid_con_titular_lista_de_chequeo_y_acceso_restringido(cliente, org_a):
+    import io  # noqa: PLC0415
+
+    import openpyxl  # noqa: PLC0415
+
+    p, base, director, u = _proyecto(cliente, org_a)
+    hl = f"{base}/historias"
+    cliente.put(f"{hl}/config", json=CONFIG, headers=director)
+    cliente.post(f"{hl}/expedientes/proponer", headers=org_a.admin)
+    # 1. El FUID de salida lleva el titular de cada historia.
+    libro = openpyxl.Workbook()
+    h = libro.active
+    h.append(["Identificador", "Documento", "Titular"])
+    h.append(["{{fila.identificador}}", "{{fila.tipo_documento}} {{fila.numero_documento}}", "{{fila.titular}}"])
+    salida = io.BytesIO()
+    libro.save(salida)
+    _plantilla(cliente, org_a, "fuid", salida.getvalue())
+    e = cliente.post(f"{base}/entregables", json={"tipo": "fuid"}, headers=org_a.admin).json()
+    filas = {f[0]: f for f in _textos(cliente, org_a, base, e["id"])[1:]}
+    assert filas["HL-1"][1:] == ["CC 52123456", "PÉREZ GÓMEZ ANA"] and filas["HL-2"][2] == "RUIZ LUIS"
+    # 2. La lista de chequeo sale de la hoja de control, en el formato de la entidad.
+    lc = f"{hl}/expedientes/{u['HL-2']}/lista-chequeo"
+    assert cliente.post(lc, headers=org_a.admin).status_code == 422  # sin hoja de control
+    cliente.post(f"{base}/digitalizacion/archivos", files=[("archivos", ("HL-2.pdf", pdf_escaneado(2)))], data={"rutas_relativas": ["HL-2.pdf"]}, headers=org_a.admin)
+    hc = f"{base}/hojas-control/unidades/{u['HL-2']}"
+    d = cliente.post(hc, json={}, headers=org_a.admin).json()
+    d = cliente.post(f"{hc}/tramites/{d['tramites'][0]['id']}/dividir", json={"pagina": 2}, headers=org_a.admin).json()
+    for tr, (tipo, fecha) in zip(d["tramites"], (("Resolución de nombramiento", "2016-01-04"), ("Certificado médico", "2016-01-10")), strict=True):
+        cliente.patch(f"{hc}/tramites/{tr['id']}", json={"tipo_documental": tipo, "fecha": fecha}, headers=org_a.admin)
+    assert cliente.post(lc, headers=org_a.admin).status_code == 422  # sin plantilla vigente: se dice
+    tipos = cliente.get("/api/v1/plantillas/tipos", headers=org_a.admin).json()
+    assert "numero_documento" in tipos["lista_chequeo"]["encabezado"] and "presente" in tipos["lista_chequeo"]["fila"]
+    _plantilla(cliente, org_a, "lista_chequeo", cliente.get("/api/v1/plantillas/tipos/lista_chequeo/base", headers=org_a.admin).content)
+    r = cliente.post(lc, headers=org_a.admin)
+    assert r.status_code == 201 and r.json()["elementos"] == 4, r.text  # 3 mínimos + 1 adicional
+    textos = _textos(cliente, org_a, base, r.json()["expedicion_id"])
+    planos = [" ".join(f) for f in textos]
+    assert any("Resolución de nombramiento" in f and "Sí Sí" in f for f in planos)
+    assert any("Certificado de antecedentes" in f and "No está en el expediente" in f for f in planos)
+    assert any("Certificado médico" in f and "No es de los tipos mínimos" in f for f in planos)
+    assert any("RUIZ LUIS" in f for f in planos) and any("Faltan: Acta de posesión, Certificado de antecedentes" in f for f in planos)
+    # 3. Acceso restringido: sin el permiso de consulta reservada solo se ven los metadatos.
+    _, consulta = agregar_usuario(cliente, org_a, "consulta@alfa.example.com", "Consulta y auditoría")
+    fila = next(f for f in cliente.get("/api/v1/consulta/buscar", params={"q": "79555111"}, headers=consulta).json()["filas"] if f["identificador"] == "HL-2")
+    assert fila["reservada"] and not fila["contenido_visible"] and fila["acceso"] == "restringida (historia laboral)"
+    imagen = f"/api/v1/consulta/proyectos/{p['id']}/unidades/{u['HL-2']}/paginas/1/imagen"
+    assert cliente.get(imagen, headers=consulta).status_code == 403
+    assert cliente.get(imagen, headers=director).status_code == 200  # la dirección tiene consulta reservada
+    cliente.put(f"{hl}/config", json=CONFIG | {"acceso_restringido": False, "motivo": "La TRD de la entidad ya define el acceso"}, headers=director)
+    assert cliente.get(imagen, headers=consulta).status_code == 200
+    fila = next(f for f in cliente.get("/api/v1/consulta/buscar", params={"q": "79555111"}, headers=consulta).json()["filas"] if f["identificador"] == "HL-2")
+    assert fila["contenido_visible"]

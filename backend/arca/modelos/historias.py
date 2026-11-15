@@ -8,7 +8,7 @@ restringido, y se cierra cuando termina el trámite de retiro y el pago de las p
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, UniqueConstraint, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from arca.modelos.base import Base, IdMixin, Json, TenantMixin
@@ -24,6 +24,7 @@ class ConfigHistorias(IdMixin, TenantMixin, Base):
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
     series: Mapped[list] = mapped_column(Json, default=list)  # códigos de la TRD que son historias laborales; vacío = todo el proyecto
     tipos_obligatorios: Mapped[list] = mapped_column(Json, default=list)  # tipos documentales mínimos de la serie
+    acceso_restringido: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())  # datos sensibles: aunque la TRD no lo diga
     motivo: Mapped[str] = mapped_column(Text, default="")
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     actualizado_por: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id", ondelete="RESTRICT"))

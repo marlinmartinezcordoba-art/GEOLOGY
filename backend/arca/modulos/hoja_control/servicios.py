@@ -31,6 +31,7 @@ from arca.modelos import (
     LoteInventario,
     Proyecto,
     RecursoDigital,
+    TitularExpediente,
     TramiteHoja,
     UnidadDocumental,
     Usuario,
@@ -650,6 +651,7 @@ def expedir(ctx, proyecto: Proyecto, h: HojaControl):
         "oficina_productora": f"{clasif['dependencia'][0]} {clasif['dependencia'][1] or ''}".strip() if clasif else "",
         "total_folios": v["total_folios"], "total_documentos": len(tramites(ctx, h)), "elaboro": nombre(h.enviada_por or h.creado_por), "verifico": nombre(h.verificada_por),
         "fecha_verificacion": h.verificada_en.date() if h.verificada_en else None, "diferencia_folios": v["diferencia_folios"],
+        **entregables.titular_fila(ctx.db.scalar(select(TitularExpediente).where(TitularExpediente.unidad_id == u.id))),
     }
     filas = [{"orden": t.orden, "fecha": t.fecha or t.fecha_texto or "S. F.", "tipo_documental": t.tipo_documental, "detalle": t.detalle, "folio_desde": t.folio_desde,
               "folio_hasta": t.folio_hasta, "folios": (t.folio_hasta - t.folio_desde + 1) if t.folio_desde and t.folio_hasta else None,

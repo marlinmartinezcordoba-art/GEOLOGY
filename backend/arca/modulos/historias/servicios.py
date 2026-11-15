@@ -129,12 +129,13 @@ def ver_config(ctx, proyecto: Proyecto) -> dict[str, Any]:
     base = {"tipos_documento": TIPOS_DOCUMENTO, "tipos_de_la_trd": sugeridos[:200],
             "aviso": "Los tipos documentales mínimos de la serie están en el Banco Terminológico (BANTER) del AGN y en la TRD de la entidad: márquelos aquí."}
     if conf is None:
-        return {"configurado": False, "activo": False, "series": [], "tipos_obligatorios": [], **base}
+        return {"configurado": False, "activo": False, "series": [], "tipos_obligatorios": [], "acceso_restringido": True, **base}
     return {"configurado": True, "activo": conf.activo, "series": conf.series, "tipos_obligatorios": conf.tipos_obligatorios, "motivo": conf.motivo,
+            "acceso_restringido": conf.acceso_restringido,
             "actualizado_en": conf.actualizado_en, **base}
 
 
-def guardar_config(ctx, proyecto: Proyecto, activo: bool, series: list[str], tipos: list[str], motivo: str) -> ConfigHistorias:
+def guardar_config(ctx, proyecto: Proyecto, activo: bool, series: list[str], tipos: list[str], motivo: str, acceso_restringido: bool = True) -> ConfigHistorias:
     _abierto(proyecto)
     tipos = list(dict.fromkeys(t.strip()[:200] for t in tipos if t.strip()))
     series = list(dict.fromkeys(s.strip()[:80] for s in series if s.strip()))
@@ -143,10 +144,22 @@ def guardar_config(ctx, proyecto: Proyecto, activo: bool, series: list[str], tip
         conf = ConfigHistorias(tenant_id=ctx.tenant_id, proyecto_id=proyecto.id)
         ctx.db.add(conf)
     conf.activo, conf.series, conf.tipos_obligatorios, conf.motivo, conf.actualizado_en, conf.actualizado_por = activo, series, tipos, motivo.strip(), ahora_utc(), ctx.usuario.id
+    conf.acceso_restringido = acceso_restringido
     ctx.auditar(accion="CONFIGURAR_HISTORIAS", objeto="Proyecto", objeto_id=proyecto.id,
-                detalle=f"{proyecto.codigo} · {'activo' if activo else 'inactivo'} · series: {', '.join(series) or 'todo el proyecto'} · {len(tipos)} tipos obligatorios · {motivo.strip()}")
+                detalle=f"{proyecto.codigo} · {'activo' if activo else 'inactivo'} · acceso {'restringido' if acceso_restringido else 'según la TRD'} · series: {', '.join(series) or 'todo el proyecto'} · {len(tipos)} tipos obligatorios · {motivo.strip()}")
     ctx.db.commit()
     return conf
+
+
+def restringida(ctx, u: UnidadDocumental) -> bool:
+    """Una historia laboral es de acceso restringido (artículo 9.5.3) si la configuración lo pide, diga lo que diga la TRD."""
+    conf = ctx.db.scalar(select(ConfigHistorias).where(ConfigHistorias.proyecto_id == u.proyecto_id))
+    return bool(conf and conf.acceso_restringido and aplica(ctx, conf, u))
+
+
+def restringidas(ctx, unidades: list[UnidadDocumental]) -> set[uuid.UUID]:
+    confs = {c.proyecto_id: c for c in ctx.db.scalars(select(ConfigHistorias).where(ConfigHistorias.proyecto_id.in_({u.proyecto_id for u in unidades})))} if unidades else {}
+    return {u.id for u in unidades if (c := confs.get(u.proyecto_id)) and c.acceso_restringido and aplica(ctx, c, u)}
 
 
 # --- Titular ----------------------------------------------------------------------------------
@@ -328,6 +341,47 @@ def proponer_todos(ctx, proyecto: Proyecto) -> int:
             if antes is None or antes.estado != "confirmado":
                 n += 1 if proponer(ctx, proyecto, u) is not None else 0
     return n
+
+
+def expedir_lista_chequeo(ctx, proyecto: Proyecto, u: UnidadDocumental):
+    """La lista de chequeo de la historia en el formato de la entidad: los tipos mínimos (presentes o no) y los demás de la hoja."""
+    from arca.modulos.entregables import servicios as entregables  # noqa: PLC0415
+
+    conf = config_de(ctx, proyecto)
+    if not aplica(ctx, conf, u):
+        raise TransicionInvalida("Esta unidad no es una historia laboral según la configuración del proyecto")
+    if not conf.tipos_obligatorios:
+        raise TransicionInvalida("Falta la lista de tipos documentales mínimos en la configuración de historias laborales")
+    h = ctx.db.scalar(select(HojaControl).where(HojaControl.unidad_id == u.id))
+    if h is None:
+        raise TransicionInvalida("La historia no tiene hoja de control: la lista de chequeo sale de ella")
+    tramites = list(ctx.db.scalars(select(TramiteHoja).where(TramiteHoja.hoja_id == h.id).order_by(TramiteHoja.orden)))
+    r = revisar(ctx, proyecto, u, conf)
+    filas, usados = [], set()
+    for tipo in conf.tipos_obligatorios:
+        t = next((x for x in tramites if _plano(x.tipo_documental) == _plano(tipo)), None)
+        if t:
+            usados.add(t.id)
+        filas.append({"tipo_documental": tipo, "minimo": "Sí", "presente": "Sí" if t else "No", "folio_desde": t.folio_desde if t else None,
+                      "folio_hasta": t.folio_hasta if t else None, "fecha": (t.fecha or t.fecha_texto or "S. F.") if t else None,
+                      "observacion": "" if t else "No está en el expediente"})
+    for t in tramites:
+        if t.id not in usados and t.tipo_documental:
+            filas.append({"tipo_documental": t.tipo_documental, "minimo": "No", "presente": "Sí", "folio_desde": t.folio_desde, "folio_hasta": t.folio_hasta,
+                          "fecha": t.fecha or t.fecha_texto or "S. F.", "observacion": "No es de los tipos mínimos de la serie"})
+    for i, f in enumerate(filas, start=1):
+        f["numero"] = i
+    c = _codigo_clasificacion(ctx, u.id)
+    encabezado = {
+        "numero_orden": u.numero_orden, "identificador": u.identificador, "codigo_serie": u.codigo_serie, "nombre": u.nombre, "caja": u.caja, "carpeta": u.carpeta,
+        "tomo": u.tomo, "otro": u.otro, "folios": u.folios, "soporte": u.soporte, "frecuencia_consulta": u.frecuencia_consulta, "notas": u.notas, "fase": u.fase,
+        "fecha_inicial": u.fecha_inicial, "fecha_final": u.fecha_final, "codigo_clasificacion": c[0] if c else "", "serie": "", "subserie": "", "dependencia": "",
+        "oficina_productora": "", **entregables.titular_fila(titular_de(ctx, u)),
+        "total_obligatorios": r["completitud"]["obligatorios"], "total_presentes": r["completitud"]["presentes"], "total_faltantes": len(r["completitud"]["faltan"]),
+        "faltantes": ("Faltan: " + ", ".join(r["completitud"]["faltan"])) if r["completitud"]["faltan"] else "Están todos los tipos mínimos.",
+        "estado_hoja": h.estado, "alertas": " · ".join(a["mensaje"] for a in r["alertas"] if a["clase"] != "faltan_tipos"),
+    }
+    return entregables.expedir_filas(ctx, proyecto, "lista_chequeo", encabezado, filas, f"Lista_chequeo_{u.identificador}", {"lista_chequeo": u.identificador})
 
 
 def unidad(ctx, proyecto: Proyecto, unidad_id: uuid.UUID) -> UnidadDocumental:

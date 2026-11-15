@@ -349,7 +349,7 @@ export type DetalleInspeccion = {
 };
 
 export type ConfigHistorias = {
-  configurado: boolean; activo: boolean; series: string[]; tipos_obligatorios: string[]; motivo?: string; tipos_de_la_trd: string[]; aviso: string; tipos_documento: Record<string, string>;
+  configurado: boolean; activo: boolean; series: string[]; tipos_obligatorios: string[]; acceso_restringido: boolean; motivo?: string; tipos_de_la_trd: string[]; aviso: string; tipos_documento: Record<string, string>;
 };
 export type TitularHistoria = {
   tipo_documento: string; numero_documento: string; nombres: string; cargo: string; dependencia: string; fecha_vinculacion: string | null; fecha_retiro: string | null;

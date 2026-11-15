@@ -4,10 +4,11 @@ import uuid
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
 from arca.api.deps import Contexto, requiere
+from arca.modelos import ArchivoDigital
 from arca.modulos.historias import servicios
 from arca.modulos.m06_proyectos.servicios import obtener as obtener_proyecto
 from arca.nucleo.permisos import Permiso
@@ -16,12 +17,14 @@ rutas = APIRouter(prefix="/proyectos/{proyecto_id}/historias", tags=["Historias 
 Lector = Annotated[Contexto, Depends(requiere(Permiso.INVENTARIO_LEER))]
 Elaborador = Annotated[Contexto, Depends(requiere(Permiso.HOJA_CONTROL))]
 Director = Annotated[Contexto, Depends(requiere(Permiso.PROYECTOS))]
+Expedidor = Annotated[Contexto, Depends(requiere(Permiso.EXPEDIR))]
 
 
 class Config(BaseModel):
     activo: bool = True
     series: list[str] = Field(default_factory=list, max_length=50)
     tipos_obligatorios: list[str] = Field(default_factory=list, max_length=200)
+    acceso_restringido: bool = True
     motivo: str = Field(min_length=5, max_length=500)
 
 
@@ -43,7 +46,7 @@ def ver_config(proyecto_id: uuid.UUID, ctx: Lector) -> dict[str, Any]:
 @rutas.put("/config")
 def guardar_config(proyecto_id: uuid.UUID, datos: Config, ctx: Director) -> dict[str, Any]:
     p = obtener_proyecto(ctx, proyecto_id)
-    servicios.guardar_config(ctx, p, datos.activo, datos.series, datos.tipos_obligatorios, datos.motivo)
+    servicios.guardar_config(ctx, p, datos.activo, datos.series, datos.tipos_obligatorios, datos.motivo, datos.acceso_restringido)
     return servicios.ver_config(ctx, p)
 
 
@@ -70,3 +73,12 @@ def confirmar(proyecto_id: uuid.UUID, unidad_id: uuid.UUID, datos: Titular, ctx:
     u = servicios.unidad(ctx, p, unidad_id)
     servicios.confirmar(ctx, p, u, datos.model_dump(exclude_unset=True))
     return servicios.revisar(ctx, p, u)
+
+
+@rutas.post("/expedientes/{unidad_id}/lista-chequeo", status_code=status.HTTP_201_CREATED)
+def lista_chequeo(proyecto_id: uuid.UUID, unidad_id: uuid.UUID, ctx: Expedidor) -> dict[str, Any]:
+    """Expide la lista de chequeo en la plantilla vigente de la entidad. Se descarga como cualquier entregable."""
+    p = obtener_proyecto(ctx, proyecto_id)
+    e = servicios.expedir_lista_chequeo(ctx, p, servicios.unidad(ctx, p, unidad_id))
+    a = ctx.db.get(ArchivoDigital, e.archivo_id)
+    return {"expedicion_id": e.id, "elementos": e.elementos, "nombre_archivo": a.nombre_original, "sha256": a.sha256}

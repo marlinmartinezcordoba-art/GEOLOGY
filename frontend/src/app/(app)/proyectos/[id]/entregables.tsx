@@ -90,7 +90,7 @@ export function Entregables({ proyecto }: { proyecto: Proyecto }) {
         </div>
       )}
       <div className="grid gap-3 md:grid-cols-3">{/* El acta de eliminación se expide desde su proceso, en Disposición final. */}
-        {Object.entries(tipos.datos ?? {}).filter(([clave]) => !["acta_eliminacion", "hoja_control", "descripcion_isadg"].includes(clave)).map(([clave, t]) => {
+        {Object.entries(tipos.datos ?? {}).filter(([clave]) => !["acta_eliminacion", "hoja_control", "descripcion_isadg", "lista_chequeo"].includes(clave)).map(([clave, t]) => {
           const v = vigente(clave);
           return (
             <div key={clave} className="flex flex-col rounded-xl border border-line bg-surface p-4 shadow-xs">

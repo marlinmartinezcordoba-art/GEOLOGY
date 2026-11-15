@@ -5,7 +5,8 @@ Reglas (D-37):
   trámites de la hoja de control VERIFICADA y la descripción ISAD(G) APROBADA. Lo que está en elaboración no se
   consulta: lo que se consulta es lo que ya se validó.
 - Cada palabra buscada debe aparecer en la unidad (en cualquiera de sus fuentes). Entre comillas, la frase exacta.
-- El acceso de la TRD manda: en una unidad clasificada o reservada, quien no tiene el permiso de consulta reservada
+- El acceso de la TRD manda (y en un proyecto de historias laborales, su configuración: acceso restringido aunque la TRD
+  no lo marque): en una unidad clasificada o reservada, quien no tiene el permiso de consulta reservada
   ve los metadatos, pero no el contenido (ni las imágenes, ni el texto, ni los fragmentos), y la búsqueda no le
   revela coincidencias en ese contenido.
 - Solo se consulta lo de los proyectos del alcance de la persona. Abrir una ficha queda en la auditoría.
@@ -22,6 +23,7 @@ from sqlalchemy import and_, exists, func, or_, select
 
 from arca.modelos import (
     ClasificacionUnidad,
+    ConfigHistorias,
     DescripcionUnidad,
     ElementoInstrumento,
     EntradaIndice,
@@ -39,6 +41,7 @@ from arca.modelos import (
 )
 from arca.modelos.base import ahora_utc
 from arca.modelos.transferencias import FASES
+from arca.modulos.historias import servicios as historias
 from arca.modulos.m04_instrumentos.clasificacion import calendario
 from arca.modulos.m10_digitalizacion.paginas import NO_CUENTAN, paginas
 from arca.nucleo.errores import AccesoDenegado, DatosInvalidos
@@ -94,7 +97,8 @@ def _firmas(ctx, proyecto: Proyecto) -> dict[uuid.UUID, str]:
     hojas = {uid: f"{e}:{v}" for uid, e, v in ctx.db.execute(select(HojaControl.unidad_id, HojaControl.estado, HojaControl.verificada_en).where(HojaControl.proyecto_id == pid)).all()}
     descs = {uid: f"{e}:{a}" for uid, e, a in ctx.db.execute(select(DescripcionUnidad.unidad_id, DescripcionUnidad.estado, DescripcionUnidad.aprobada_en).where(DescripcionUnidad.proyecto_id == pid)).all()}
     titulares = dict(ctx.db.execute(select(TitularExpediente.unidad_id, TitularExpediente.actualizado_en).where(TitularExpediente.proyecto_id == pid)).all())
-    return {uid: f"{act}|{clas.get(uid)}|{ocr.get(uid)}|{hojas.get(uid)}|{descs.get(uid)}|{titulares.get(uid)}"[:300]
+    conf = ctx.db.scalar(select(ConfigHistorias.actualizado_en).where(ConfigHistorias.proyecto_id == pid))  # el acceso restringido cambia el índice
+    return {uid: f"{act}|{clas.get(uid)}|{ocr.get(uid)}|{hojas.get(uid)}|{descs.get(uid)}|{titulares.get(uid)}|{conf}"[:300]
             for uid, act in ctx.db.execute(select(UnidadDocumental.id, UnidadDocumental.actualizado_en).where(UnidadDocumental.proyecto_id == pid)).all()}
 
 
@@ -109,7 +113,7 @@ def indexar_unidad(ctx, u: UnidadDocumental) -> None:
     for vieja in ctx.db.scalars(select(EntradaIndice).where(EntradaIndice.unidad_id == u.id)):
         ctx.db.delete(vieja)
     c = _clasificacion(ctx, u.id)
-    reservada = bool(c and c["reservada"])
+    reservada = bool(c and c["reservada"]) or historias.restringida(ctx, u)
     meta = [u.identificador, u.nombre, u.codigo_serie, f"caja {u.caja}" if u.caja else "", f"carpeta {u.carpeta}" if u.carpeta else "", u.notas,
             u.fecha_inicial.isoformat() if u.fecha_inicial else "", u.fecha_final.isoformat() if u.fecha_final else ""]
     if c:
@@ -226,8 +230,11 @@ def buscar(ctx, proyectos: list[Proyecto], f: dict[str, Any], desplazamiento: in
     titulos = dict(ctx.db.execute(select(DescripcionUnidad.unidad_id, DescripcionUnidad.campos).where(DescripcionUnidad.unidad_id.in_(ids), DescripcionUnidad.estado == "aprobada")).all()) if ids else {}
     hojas = set(ctx.db.scalars(select(HojaControl.unidad_id).where(HojaControl.unidad_id.in_(ids), HojaControl.estado == "verificada"))) if ids else set()
     resultado = []
+    restringidas = historias.restringidas(ctx, [fila[0] for fila in filas])
     for u, proyecto_codigo, codigo, nombre_clas, dependencia, acceso in filas:
-        reservada = (acceso or "publica") in RESERVADAS
+        reservada = (acceso or "publica") in RESERVADAS or u.id in restringidas
+        if u.id in restringidas and (acceso or "publica") not in RESERVADAS:
+            acceso = "restringida (historia laboral)"
         resultado.append({
             "unidad_id": u.id, "proyecto_id": u.proyecto_id, "proyecto": proyecto_codigo, "identificador": u.identificador, "nombre": u.nombre,
             "caja": u.caja, "carpeta": u.carpeta, "fecha_inicial": u.fecha_inicial, "fecha_final": u.fecha_final, "folios": u.folios, "fase": u.fase,
@@ -243,7 +250,7 @@ def buscar(ctx, proyectos: list[Proyecto], f: dict[str, Any], desplazamiento: in
 
 def ficha(ctx, proyecto: Proyecto, u: UnidadDocumental, ver_reservado: bool) -> dict[str, Any]:
     c = _clasificacion(ctx, u.id)
-    reservada = bool(c and c["reservada"])
+    reservada = bool(c and c["reservada"]) or historias.restringida(ctx, u)
     visible = ver_reservado or not reservada
     cal = calendario(u, c["e"]) if c else None
     movs = [{"desde": FASES.get(m.desde or "", None), "hasta": FASES.get(m.hasta, m.hasta), "motivo": m.motivo, "fecha": m.creado_en}
@@ -275,7 +282,7 @@ def ficha(ctx, proyecto: Proyecto, u: UnidadDocumental, ver_reservado: bool) -> 
 
 def exigir_contenido(ctx, u: UnidadDocumental, ver_reservado: bool) -> None:
     c = _clasificacion(ctx, u.id)
-    if c and c["reservada"] and not ver_reservado:
+    if ((c and c["reservada"]) or historias.restringida(ctx, u)) and not ver_reservado:
         raise AccesoDenegado("Esta unidad tiene acceso clasificado o reservado según la TRD: su rol solo puede ver los metadatos")
 
 

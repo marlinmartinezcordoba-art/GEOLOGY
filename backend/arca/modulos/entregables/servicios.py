@@ -51,6 +51,9 @@ UNIDAD = {
     "subserie": "Subserie (según la clasificación)", "dependencia": "Código de la dependencia (según la clasificación)",
     "fase": "Fase del ciclo vital (archivo de gestión, central o histórico)",
     "folios_inventario": "Folios que declaraba el inventario de origen", "origen_folios": "De dónde salen los folios (hoja de control verificada o inventario)",
+    "tipo_documento": "Historia laboral: tipo de documento del titular (CC, CE, TI…)", "numero_documento": "Historia laboral: número de documento del titular",
+    "titular": "Historia laboral: nombres y apellidos del titular", "cargo_titular": "Historia laboral: cargo del titular",
+    "fecha_vinculacion": "Historia laboral: fecha de vinculación", "fecha_retiro": "Historia laboral: fecha de retiro",
 }
 TIPOS: dict[str, dict[str, Any]] = {
     "fuid": {
@@ -87,6 +90,15 @@ TIPOS: dict[str, dict[str, Any]] = {
                  "folio_desde": "Folio inicial", "folio_hasta": "Folio final", "folios": "Número de folios", "no_radicado": "Número de radicado",
                  "observaciones": "Observaciones", "asunto": "Asunto", "remitente": "Remitente", "destinatario": "Destinatario", "firmantes": "Firmantes",
                  "lugar": "Lugar", "numero": "Número del documento"},
+    },
+    "lista_chequeo": {
+        "nombre": "Lista de chequeo de la historia laboral",
+        "encabezado": {**COMUNES, **{k: v for k, v in UNIDAD.items() if k not in ("imagenes", "estado_digitalizacion")},
+                       "oficina_productora": "Oficina productora (dependencia de la clasificación)", "total_obligatorios": "Tipos documentales mínimos",
+                       "total_presentes": "Tipos mínimos presentes", "total_faltantes": "Tipos mínimos que faltan", "faltantes": "Cuáles faltan",
+                       "estado_hoja": "Estado de la hoja de control de la que sale", "alertas": "Alertas de la historia laboral (otra persona, duplicado…)"},
+        "fila": {"numero": "Número", "tipo_documental": "Tipo documental", "minimo": "Es de los mínimos (Sí/No)", "presente": "Está en el expediente (Sí/No)",
+                 "folio_desde": "Folio inicial", "folio_hasta": "Folio final", "fecha": "Fecha del documento", "observacion": "Observación"},
     },
     "descripcion_isadg": {
         "nombre": "Base de descripción ISAD(G)",
@@ -133,6 +145,17 @@ def plantilla_base(tipo: str) -> bytes:
             [(t["fila"][c], c) for c in ("numero_orden", "identificador", "codigo_clasificacion", "nombre", "fecha_inicial", "fecha_final", "caja", "carpeta", "folios", "soporte")],
             ["Total de unidades: {{total_unidades}} · Total de folios: {{total_folios}} · Total de cajas: {{total_cajas}}", "",
              "Elaboró: ______________________        Revisó: ______________________        Aprobó: ______________________"],
+        )
+    if tipo == "lista_chequeo":
+        return motor.plantilla_base(
+            "LISTA DE CHEQUEO · HISTORIA LABORAL",
+            [("Entidad", "entidad_cliente"), ("Oficina productora", "oficina_productora"), ("Serie", "serie"), ("Subserie", "subserie"),
+             ("Titular", "titular"), ("Documento", "numero_documento"), ("Cargo", "cargo_titular"), ("Identificador", "identificador"),
+             ("Caja", "caja"), ("Carpeta", "carpeta")],
+            [("N.º", "numero"), ("Tipo documental", "tipo_documental"), ("Mínimo", "minimo"), ("Presente", "presente"), ("Folio desde", "folio_desde"),
+             ("Folio hasta", "folio_hasta"), ("Fecha", "fecha"), ("Observación", "observacion")],
+            ["Tipos mínimos: {{total_obligatorios}} · Presentes: {{total_presentes}} · Faltan: {{total_faltantes}}", "{{faltantes}}", "{{alertas}}", "",
+             "Elaboró: ______________________        Revisó: ______________________"],
         )
     if tipo == "hoja_control":
         return motor.plantilla_base(
@@ -367,8 +390,22 @@ def _fecha(texto: str):
         return texto
 
 
+def titular_fila(t) -> dict[str, Any]:
+    """Los datos del titular de una historia laboral para las marcas del FUID, los rótulos y la hoja de control."""
+    if t is None:
+        return {"tipo_documento": "", "numero_documento": "", "titular": "", "cargo_titular": "", "fecha_vinculacion": None, "fecha_retiro": None}
+    return {"tipo_documento": t.tipo_documento, "numero_documento": t.numero_documento, "titular": t.nombres, "cargo_titular": t.cargo,
+            "fecha_vinculacion": t.fecha_vinculacion, "fecha_retiro": t.fecha_retiro}
+
+
+def _titulares(ctx, proyecto: Proyecto) -> dict[uuid.UUID, Any]:
+    from arca.modelos import TitularExpediente  # noqa: PLC0415
+
+    return {t.unidad_id: t for t in ctx.db.scalars(select(TitularExpediente).where(TitularExpediente.proyecto_id == proyecto.id))}
+
+
 def _fila_unidad(u: UnidadDocumental, imagenes: dict[uuid.UUID, tuple[int, str]], clasif: dict[uuid.UUID, dict[str, Any]] | None = None,
-                 hojas: dict[uuid.UUID, dict[str, Any]] | None = None) -> dict[str, Any]:
+                 hojas: dict[uuid.UUID, dict[str, Any]] | None = None, titulares: dict[uuid.UUID, Any] | None = None) -> dict[str, Any]:
     paginas, estado = imagenes.get(u.id, (0, "Sin digitalizar"))
     c = (clasif or {}).get(u.id, {})
     h = (hojas or {}).get(u.id)
@@ -385,7 +422,7 @@ def _fila_unidad(u: UnidadDocumental, imagenes: dict[uuid.UUID, tuple[int, str]]
             "frecuencia_consulta": u.frecuencia_consulta, "notas": notas, "imagenes": paginas or None, "estado_digitalizacion": estado,
             "folios_inventario": u.folios, "origen_folios": "hoja de control verificada" if h else "inventario de origen",
             "codigo_clasificacion": c.get("codigo_clasificacion", ""), "serie": c.get("serie", ""), "subserie": c.get("subserie", ""), "dependencia": c.get("dependencia", ""),
-            "fase": FASES.get(u.fase, u.fase)}
+            "fase": FASES.get(u.fase, u.fase), **titular_fila((titulares or {}).get(u.id))}
 
 
 def _orden_natural(clave: str) -> list:
@@ -414,10 +451,11 @@ def expedir(ctx, proyecto: Proyecto, tipo: str, cajas: list[str] | None, lote: s
     imagenes = _imagenes_por_unidad(ctx, proyecto)
     clasif = _clasificaciones(ctx, proyecto)
     hojas = _hojas_verificadas(ctx, proyecto)
+    titulares = _titulares(ctx, proyecto)
     if tipo in ("fuid", "acta_eliminacion"):
         if not unidades:
             raise DatosInvalidos("No hay unidades documentales para ese filtro")
-        filas = [_fila_unidad(u, imagenes, clasif, hojas) for u in unidades]
+        filas = [_fila_unidad(u, imagenes, clasif, hojas, titulares) for u in unidades]
         encabezado = {**comunes, "total_unidades": len(filas), "total_folios": sum(f["folios"] or 0 for f in filas), "total_imagenes": sum(f["imagenes"] or 0 for f in filas)}
         resultado, elementos = motor.llenar(contenido, encabezado, filas), len(filas)
     elif tipo == "rotulo_caja":
@@ -440,10 +478,10 @@ def expedir(ctx, proyecto: Proyecto, tipo: str, cajas: list[str] | None, lote: s
                           "primer_identificador": contenido_caja[0].identificador if contenido_caja else "", "ultimo_identificador": contenido_caja[-1].identificador if contenido_caja else "",
                           "fecha_inicial": min(fechas_i) if fechas_i else None, "fecha_final": max(fechas_f) if fechas_f else None,
                           "series": ", ".join(sorted({u.codigo_serie for u in contenido_caja if u.codigo_serie})), "folios": sum(u.folios or 0 for u in contenido_caja)}
-            lista.append((f"Caja {codigo}", encabezado, [_fila_unidad(u, imagenes, clasif, hojas) for u in contenido_caja]))
+            lista.append((f"Caja {codigo}", encabezado, [_fila_unidad(u, imagenes, clasif, hojas, titulares) for u in contenido_caja]))
         resultado, elementos = motor.llenar_varios(contenido, lista), len(lista)
     else:
-        lista = [(u.identificador, {**comunes, **_fila_unidad(u, imagenes, clasif, hojas)}, []) for u in unidades]
+        lista = [(u.identificador, {**comunes, **_fila_unidad(u, imagenes, clasif, hojas, titulares)}, []) for u in unidades]
         resultado, elementos = motor.llenar_varios(contenido, lista), len(lista)
     nombre = f"{ {'fuid': 'FUID', 'rotulo_caja': 'Rotulos_caja', 'rotulo_carpeta': 'Rotulos_carpeta', 'acta_eliminacion': 'Acta_eliminacion'}[tipo] }_{proyecto.codigo}_{datetime.now():%Y%m%d_%H%M}.xlsx"
     archivo = guardar_archivo(ctx, proyecto, resultado, nombre, {"XLSX"})
