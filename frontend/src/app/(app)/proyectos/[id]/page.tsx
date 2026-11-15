@@ -24,12 +24,13 @@ import { Disposicion } from "./disposicion";
 import { Entregables } from "./entregables";
 import { Flujo } from "./flujo";
 import { HojasControl } from "./hojas";
+import { Inspeccion } from "./inspeccion";
 import { Instrumentos } from "./instrumentos";
 import { Inventario } from "./inventario";
 import { Productividad } from "./productividad";
 import { Transferencias } from "./transferencias";
 
-type Pestana = "resumen" | "productividad" | "instrumentos" | "clasificacion" | "transferencias" | "disposicion" | "hojas" | "descripcion" | "flujo" | "inventario" | "digitalizacion" | "entregables" | "sedes" | "equipo" | "versiones";
+type Pestana = "resumen" | "productividad" | "instrumentos" | "clasificacion" | "transferencias" | "disposicion" | "hojas" | "descripcion" | "flujo" | "inventario" | "digitalizacion" | "entregables" | "sedes" | "equipo" | "versiones" | "inspeccion";
 type Transicion = { ruta: "activar" | "cerrar" | "reabrir"; titulo: string; boton: string; peligro?: boolean; descripcion: string };
 
 const TRANSICIONES: Record<string, Transicion[]> = {
@@ -45,6 +46,8 @@ export default function DetalleProyecto() {
   const gestiona = puede(PERMISOS.proyectos);
   const proyecto = useDatos(() => api<Proyecto>(`/proyectos/${id}`), [id]);
   const sedes = useDatos(() => api<Sede[]>(`/proyectos/${id}/sedes`), [id]);
+  const procesosLote = useDatos(() => api<{ lote: string; isadg: boolean }[]>(`/proyectos/${id}/procesos-por-lote`).catch(() => []), [id]);
+  const conIsadg = (procesosLote.datos ?? []).some((l) => l.isadg);
   const equipo = useDatos(() => api<MiembroProyecto[]>(`/proyectos/${id}/equipo`), [id]);
   const versiones = useDatos(() => api<VersionProyecto[]>(`/proyectos/${id}/versiones`), [id]);
   const personas = useDatos(() => api<Persona[]>("/usuarios/directorio").catch(() => [] as Persona[]), []);
@@ -118,10 +121,11 @@ export default function DetalleProyecto() {
                     { valor: "inventario" as const, etiqueta: "Inventario FUID" },
                     { valor: "clasificacion" as const, etiqueta: "Clasificación" },
                     { valor: "hojas" as const, etiqueta: "Hoja de control" },
-                    { valor: "descripcion" as const, etiqueta: "Descripción ISAD(G)" },
+                    ...(conIsadg ? [{ valor: "descripcion" as const, etiqueta: "Descripción ISAD(G)" }] : []),
                     { valor: "transferencias" as const, etiqueta: "Transferencias" },
                     { valor: "disposicion" as const, etiqueta: "Disposición final" },
                     { valor: "digitalizacion" as const, etiqueta: "Digitalización y calidad" },
+                    { valor: "inspeccion" as const, etiqueta: "Calidad por lote" },
                     { valor: "entregables" as const, etiqueta: "Entregables" },
                   ]
                 : []),
@@ -180,6 +184,7 @@ export default function DetalleProyecto() {
         {pestana === "transferencias" && <Transferencias proyecto={p} />}
         {pestana === "disposicion" && <Disposicion proyecto={p} />}
         {pestana === "digitalizacion" && <Digitalizacion proyecto={p} />}
+        {pestana === "inspeccion" && <Inspeccion proyecto={p} />}
         {pestana === "entregables" && <Entregables proyecto={p} />}
 
         {pestana === "sedes" && (

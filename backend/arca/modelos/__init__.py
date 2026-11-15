@@ -6,6 +6,7 @@ from arca.modelos.descripcion import ConfiguracionLote, DescripcionUnidad
 from arca.modelos.disposicion import ElementoDisposicion, ProcesoDisposicion
 from arca.modelos.flujo import FlujoUnidad, PaqueteEntrega, Trabajo
 from arca.modelos.hoja_control import HojaControl, TramiteHoja
+from arca.modelos.inspeccion import InspeccionLote, ItemInspeccion, PlanMuestreo
 from arca.modelos.instrumentos import ClasificacionUnidad, ElementoInstrumento, Instrumento, VersionInstrumento
 from arca.modelos.ocr import TextoPagina
 from arca.modelos.operacion import EstadoProyecto, MiembroProyecto, Parametro, Proyecto, Sede, UnidadMeta, VersionProyecto
@@ -42,6 +43,9 @@ __all__ = [
     "ElementoTransferencia",
     "FlujoUnidad",
     "PaqueteEntrega",
+    "InspeccionLote",
+    "ItemInspeccion",
+    "PlanMuestreo",
     "Trabajo",
     "MovimientoFase",
     "Transferencia",

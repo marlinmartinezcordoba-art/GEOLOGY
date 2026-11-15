@@ -47,6 +47,7 @@ from arca.modelos import (
 from arca.modelos.base import ahora_utc
 from arca.modelos.transferencias import FASES
 from arca.modulos.entrega import pdfa
+from arca.modulos.inspeccion import servicios as inspeccion
 from arca.modulos.m08_inventarios.fuid import clave_de
 from arca.modulos.m08_inventarios.servicios import guardar_archivo
 from arca.modulos.m10_digitalizacion.paginas import imagen_pagina, paginas
@@ -74,11 +75,19 @@ def _seleccion(ctx, proyecto: Proyecto, cajas: list[str], lote: str, solo_listos
     hojas = dict(ctx.db.execute(select(HojaControl.unidad_id, HojaControl.estado).where(HojaControl.proyecto_id == proyecto.id)).all())
     descs = dict(ctx.db.execute(select(DescripcionUnidad.unidad_id, DescripcionUnidad.estado).where(DescripcionUnidad.proyecto_id == proyecto.id)).all())
     con_imagenes = set(ctx.db.scalars(select(RecursoDigital.unidad_id).where(RecursoDigital.proyecto_id == proyecto.id, RecursoDigital.unidad_id.is_not(None))))
+    plan = inspeccion.plan_de(ctx, proyecto)
+    inspeccionados = inspeccion.estado_lotes(ctx, proyecto) if plan and plan.exigir_para_entrega else None
     entran, fuera = [], []
     for u in sorted(unidades, key=lambda x: (x.caja or "", x.identificador)):
         if u.id not in con_imagenes:
             fuera.append((u.identificador, "sin digitalizar"))
             continue
+        if solo_listos and inspeccionados is not None:
+            lote_u = mapa.get(clave_de(u.caja or ""), "")
+            ultima = inspeccionados.get(lote_u)
+            if ultima is None or ultima.estado != "aceptada":
+                fuera.append((u.identificador, f"el lote «{lote_u or 'sin lote'}» " + ("fue rechazado en la inspección de calidad" if ultima else "no ha pasado la inspección de calidad")))
+                continue
         pr = procesos_de(ctx, proyecto, u, confs, mapa)
         if solo_listos and pr["hoja_control"] and hojas.get(u.id) != "verificada":
             fuera.append((u.identificador, "la hoja de control no está verificada"))
@@ -95,7 +104,11 @@ def solicitar(ctx, proyecto: Proyecto, cajas: list[str], lote: str, solo_listos:
     _abierto(proyecto)
     entran, fuera = _seleccion(ctx, proyecto, cajas, lote, solo_listos)
     if not entran:
-        raise DatosInvalidos("No hay expedientes listos para entregar con ese filtro" + (f" ({len(fuera)} pendientes)" if fuera else ""))
+        motivos: dict[str, int] = {}
+        for _, m in fuera:
+            motivos[m] = motivos.get(m, 0) + 1
+        detalle = "; ".join(f"{n}: {m}" for m, n in sorted(motivos.items(), key=lambda x: -x[1])[:5])
+        raise DatosInvalidos("No hay expedientes listos para entregar con ese filtro" + (f" ({len(fuera)} pendientes · {detalle})" if fuera else ""))
     if len(entran) > MAX_UNIDADES:
         raise DatosInvalidos(f"Son {len(entran)} expedientes: arme paquetes de hasta {MAX_UNIDADES} (por caja o por lote)")
     numero = (ctx.db.scalar(select(func.max(PaqueteEntrega.numero)).where(PaqueteEntrega.proyecto_id == proyecto.id)) or 0) + 1

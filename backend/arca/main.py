@@ -13,6 +13,7 @@ from arca.modulos.entrega.rutas import rutas as entrega
 from arca.modulos.entregables.rutas import expedicion, plantillas
 from arca.modulos.flujo.rutas import rutas as flujo
 from arca.modulos.hoja_control.rutas import rutas as hojas_control
+from arca.modulos.inspeccion.rutas import rutas as inspeccion
 from arca.modulos.m01_organizaciones.rutas import organizacion, plataforma
 from arca.modulos.m02_usuarios.rutas import auth, roles, usuarios
 from arca.modulos.m03_configuracion.rutas import rutas as configuracion
@@ -73,7 +74,7 @@ def crear_app() -> FastAPI:
 
     registrar_manejadores(app)
     app.include_router(operacion)
-    for router in (auth, plataforma, organizacion, usuarios, roles, configuracion, proyectos, instrumentos, clasificacion, transferencias, disposicion, hojas_control, ocr, procesos, descripcion, consulta, flujo, inventario, digitalizacion, plantillas, expedicion, entrega, productividad, powerbi, auditoria):
+    for router in (auth, plataforma, organizacion, usuarios, roles, configuracion, proyectos, instrumentos, clasificacion, transferencias, disposicion, hojas_control, ocr, procesos, descripcion, consulta, flujo, inventario, digitalizacion, inspeccion, plantillas, expedicion, entrega, productividad, powerbi, auditoria):
         app.include_router(router, prefix="/api/v1")
     return app
 

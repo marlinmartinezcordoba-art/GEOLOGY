@@ -323,3 +323,27 @@ export type TableroFlujo = {
   ultimo: string | null; trabajador: string; procesados?: number;
 };
 export type UnidadFlujo = { unidad_id: string; identificador: string; nombre: string; caja: string | null; etapa: string; etapa_nombre: string; espera_persona: boolean; detalle: string; hechos: { fecha: string; que: string }[]; actualizado_en: string };
+
+export type DefectoCatalogo = { codigo: string; nombre: string; severidad: string };
+export type PlanMuestreo = {
+  unidad: "expedientes" | "imagenes"; metodo: "porcentaje" | "tabla"; porcentaje: number; minimo: number; tabla: { desde: number; hasta: number; muestra: number }[];
+  aceptacion: { critico: number; mayor: number; menor: number }; defectos: DefectoCatalogo[]; frente: string; exigir_para_entrega: boolean; version?: number;
+};
+export type VistaPlanMuestreo = { vigente: boolean; plan: PlanMuestreo; aviso?: string; motivo?: string; actualizado_en?: string };
+export type LoteInspeccion = {
+  lote: string; cajas: number; expedientes: number; imagenes: number;
+  ultima: { id: string; numero: number; estado: "aceptada" | "rechazada"; cerrada_en: string | null } | null; abierta: { id: string; numero: number } | null;
+};
+export type InspeccionResumen = {
+  id: string; numero: number; lote: string; estado: "abierta" | "aceptada" | "rechazada" | "anulada"; unidad: string; tamano: number; muestra: number; revisados: number;
+  semilla: number; criticos: number; mayores: number; menores: number; limitaciones: number; reinspeccion_de: string | null; creado_en: string; cerrada_en: string | null;
+};
+export type ItemMuestra = {
+  id: string; orden: number; unidad_id: string; identificador: string; nombre: string; caja: string | null; pagina: number | null; paginas: number;
+  estado: "pendiente" | "revisado"; defectos: { codigo: string; nombre: string; severidad: string; pagina: number | null; nota: string }[]; revisado_por: string | null; revisado_en: string | null;
+};
+export type DetalleInspeccion = {
+  id: string; numero: number; lote: string; estado: InspeccionResumen["estado"]; plan: PlanMuestreo; tamano: number; muestra: number; semilla: number;
+  reinspeccion_de: string | null; observaciones: string; creado_en: string; creado_por: string | null; cerrada_en: string | null; cerrada_por: string | null;
+  conteo: { critico: number; mayor: number; menor: number; limitacion: number }; revisados: number; resultado_previsto: string; razones: string[]; items: ItemMuestra[];
+};
