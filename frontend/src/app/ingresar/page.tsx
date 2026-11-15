@@ -122,7 +122,7 @@ export default function Ingresar() {
         <div className="relative flex flex-wrap gap-x-7 gap-y-2 text-[13px] text-profundo-texto">
           <span className="flex items-center gap-2"><Building2 className="size-4 text-motor-vivo" /> Multiempresa, datos aislados</span>
           <span className="flex items-center gap-2"><ScanLine className="size-4 text-motor-vivo" /> Procesamiento masivo</span>
-          <span className="flex items-center gap-2"><Sparkles className="size-4 text-motor-vivo" /> IA con evidencia</span>
+          <span className="flex items-center gap-2"><Sparkles className="size-4 text-motor-vivo" /> Propuestas con evidencia</span>
           <span className="flex items-center gap-2"><ShieldCheck className="size-4 text-motor-vivo" /> Auditoría encadenada</span>
         </div>
       </section>
